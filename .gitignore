@@ -1,0 +1,10 @@
+instance/
+*.db
+__pycache__/
+*.pyc
+.env
+static/uploads/*
+!static/uploads/.gitkeep
+venv/
+.venv/
+{templates,static/
