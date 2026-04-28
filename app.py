@@ -20,9 +20,15 @@ from sqlalchemy import func
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'textile-erp-v2-secret-2024-xK9mP')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///textile_erp.db'
+# Use /tmp for Render (ephemeral but writable), or local instance folder
+import os as _os
+_db_dir = '/tmp' if _os.environ.get('RENDER') else _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'instance')
+_os.makedirs(_db_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{_db_dir}/textile_erp.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
+_upload_dir = '/tmp/uploads' if os.environ.get('RENDER') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+os.makedirs(_upload_dir, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = _upload_dir
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 STORE_LAT = 14.4644
@@ -1041,6 +1047,13 @@ def seed_data():
     la2=LeaveApplication(employee_id=e2.id,leave_type='sick',from_date=date.today()-timedelta(days=5),to_date=date.today()-timedelta(days=5),days=1,reason='Fever',status='approved',reviewed_by=admin.id,reviewed_on=datetime.utcnow())
     db.session.add_all([la1,la2])
     db.session.commit(); print("✅ Demo data seeded!")
+
+# Serve uploaded files from /tmp on Render
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    from flask import send_from_directory
+    upload_dir = '/tmp/uploads' if os.environ.get('RENDER') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+    return send_from_directory(upload_dir, filename)
 
 with app.app_context():
     db.create_all(); seed_data()
