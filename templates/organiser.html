@@ -1,0 +1,410 @@
+{% extends 'base.html' %}
+{% block title %}My Organiser{% endblock %}
+{% block page_title %}My Organiser{% endblock %}
+
+{% block content %}
+<!-- Tab Nav -->
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  {% for t, icon, label in [('profile','user-circle','My Profile'),('salary','money-check-alt','Salary Slips'),('leaves','calendar-times','My Leaves'),('attendance','calendar-check','Attendance')] %}
+  <a href="{{ url_for('organiser', tab=t) }}"
+     class="btn-erp {{ 'btn-erp-primary' if tab == t else 'btn-erp-secondary' }}">
+    <i class="fas fa-{{ icon }}"></i> {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{% if tab == 'profile' %}
+{# ══════ PROFILE TAB ══════ #}
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card-erp p-4 text-center">
+      <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#c0392b);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:white;margin:0 auto 16px;">
+        {{ emp.full_name[0].upper() }}
+      </div>
+      <div style="font-size:20px;font-weight:800;">{{ emp.full_name }}</div>
+      <div class="badge-erp badge-info mt-1 mb-3" style="display:inline-flex;">{{ emp.role }}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;"><i class="fas fa-id-badge me-2"></i>{{ emp.employee_id }}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;"><i class="fas fa-building me-2"></i>{{ emp.department or '—' }}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;"><i class="fas fa-calendar me-2"></i>Joined {{ emp.join_date.strftime('%d %b %Y') if emp.join_date else '—' }}</div>
+      <div style="font-size:13px;color:var(--text-muted);"><i class="fas fa-phone me-2"></i>{{ emp.phone or '—' }}</div>
+      <hr style="margin:16px 0;border-color:var(--border);">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Leave Balance</div>
+      <div style="font-size:28px;font-weight:800;color:var(--info);font-family:'Space Grotesk',sans-serif;">{{ emp.leaves_remaining }}</div>
+      <div style="font-size:12px;color:var(--text-muted);">of {{ emp.total_leave_entitlement }} days remaining</div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card-erp p-4 mb-4">
+      <div class="section-title mb-3">Edit Profile</div>
+      <form method="POST" action="{{ url_for('update_profile') }}" class="form-erp">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="full_name" class="form-control" value="{{ emp.full_name }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" class="form-control" value="{{ emp.phone or '' }}" placeholder="+91 98765 43210">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ emp.email or '' }}">
+          </div>
+        </div>
+        <button type="submit" class="btn-erp btn-erp-primary mt-3"><i class="fas fa-save"></i> Save Changes</button>
+      </form>
+    </div>
+
+    <div class="card-erp p-4">
+      <div class="section-title mb-3"><i class="fas fa-lock me-2" style="color:var(--accent);"></i>Change Password</div>
+      <form method="POST" action="{{ url_for('update_profile') }}" class="form-erp">
+        <input type="hidden" name="phone" value="{{ emp.phone or '' }}">
+        <input type="hidden" name="email" value="{{ emp.email or '' }}">
+        <input type="hidden" name="full_name" value="{{ emp.full_name }}">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Current Password</label>
+            <input type="password" name="current_password" class="form-control" placeholder="Current">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">New Password</label>
+            <input type="password" name="new_password" class="form-control" placeholder="Min 6 chars">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn-erp btn-erp-secondary w-100" style="justify-content:center;"><i class="fas fa-key"></i> Update</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% elif tab == 'salary' %}
+{# ══════ SALARY TAB ══════ #}
+<div class="row g-3">
+  {% for m in months %}
+  <div class="col-xl-4 col-md-6">
+    <div class="card-erp p-4">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;">{{ m.label }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">{{ m.working_days }} working days</div>
+        </div>
+        <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#c0392b);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">
+          <i class="fas fa-file-invoice-dollar"></i>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+        <div style="text-align:center;background:rgba(14,173,105,0.06);border-radius:8px;padding:8px 4px;">
+          <div style="font-size:20px;font-weight:800;color:var(--success);">{{ m.present }}</div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:600;">PRESENT</div>
+        </div>
+        <div style="text-align:center;background:rgba(245,166,35,0.06);border-radius:8px;padding:8px 4px;">
+          <div style="font-size:20px;font-weight:800;color:var(--warning);">{{ m.leaves }}</div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:600;">LEAVES</div>
+        </div>
+        <div style="text-align:center;background:rgba(233,69,96,0.06);border-radius:8px;padding:8px 4px;">
+          <div style="font-size:20px;font-weight:800;color:var(--accent);">{{ m.absent }}</div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:600;">ABSENT</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:10px;margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--text-muted);">Est. Net Salary</div>
+        <div style="font-size:18px;font-weight:800;color:var(--accent);font-family:'Space Grotesk',sans-serif;">₹{{ "%.0f"|format(m.net_salary) }}</div>
+      </div>
+
+      <a href="{{ url_for('salary_slip_pdf', year=m.y, month=m.m) }}" class="btn-erp btn-erp-primary w-100" style="justify-content:center;">
+        <i class="fas fa-download"></i> Download Salary Slip PDF
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% elif tab == 'leaves' %}
+{# ══════ LEAVES TAB ══════ #}
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card-erp p-4 mb-4" style="border-top:4px solid var(--info);">
+      <div class="section-title mb-3">Leave Balance</div>
+      <div class="row g-2 text-center">
+        <div class="col-4">
+          <div style="background:var(--bg);border-radius:10px;padding:12px 8px;">
+            <div style="font-size:22px;font-weight:800;color:#0f3460;">{{ emp.casual_leaves }}</div>
+            <div style="font-size:10px;color:var(--text-muted);font-weight:700;">CASUAL</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="background:var(--bg);border-radius:10px;padding:12px 8px;">
+            <div style="font-size:22px;font-weight:800;color:#f5a623;">{{ emp.sick_leaves }}</div>
+            <div style="font-size:10px;color:var(--text-muted);font-weight:700;">SICK</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="background:var(--bg);border-radius:10px;padding:12px 8px;">
+            <div style="font-size:22px;font-weight:800;color:#0ead69;">{{ emp.earned_leaves }}</div>
+            <div style="font-size:10px;color:var(--text-muted);font-weight:700;">EARNED</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:12px;background:rgba(233,69,96,0.06);border-radius:10px;text-align:center;">
+        <div style="font-size:11px;color:var(--text-muted);">USED THIS YEAR</div>
+        <div style="font-size:24px;font-weight:800;color:var(--accent);">{{ emp.leaves_used }}</div>
+        <div style="font-size:11px;color:var(--text-muted);">of {{ emp.total_leave_entitlement }} total · <strong>{{ emp.leaves_remaining }} remaining</strong></div>
+      </div>
+    </div>
+
+    <div class="card-erp p-4">
+      <div class="section-title mb-3">Apply for Leave</div>
+      <form method="POST" action="{{ url_for('apply_leave') }}" class="form-erp">
+        <div class="mb-2">
+          <label class="form-label">Leave Type</label>
+          <select name="leave_type" class="form-select">
+            <option value="casual">Casual Leave</option>
+            <option value="sick">Sick Leave</option>
+            <option value="earned">Earned Leave</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">From Date</label>
+          <input type="date" name="from_date" class="form-control" required min="{{ today.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">To Date</label>
+          <input type="date" name="to_date" class="form-control" required min="{{ today.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Reason</label>
+          <textarea name="reason" class="form-control" rows="2" placeholder="Brief reason..."></textarea>
+        </div>
+        <button type="submit" class="btn-erp btn-erp-primary w-100" style="justify-content:center;">
+          <i class="fas fa-paper-plane"></i> Submit Application
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card-erp">
+      <div class="p-4" style="border-bottom:1px solid var(--border);">
+        <div class="section-title">My Leave Applications</div>
+      </div>
+      <table class="table-erp">
+        <thead>
+          <tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Applied</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for la in my_leaves %}
+          <tr>
+            <td><span class="badge-erp badge-info">{{ la.leave_type.title() }}</span></td>
+            <td>{{ la.from_date.strftime('%d %b %Y') }}</td>
+            <td>{{ la.to_date.strftime('%d %b %Y') }}</td>
+            <td style="font-weight:700;">{{ la.days }}</td>
+            <td style="font-size:13px;color:var(--text-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ la.reason or '—' }}</td>
+            <td style="font-size:12px;color:var(--text-muted);">{{ la.applied_on.strftime('%d %b') }}</td>
+            <td>
+              <span class="badge-erp {{ 'badge-success' if la.status=='approved' else 'badge-danger' if la.status=='rejected' else 'badge-warning' }}">
+                {{ '✅' if la.status=='approved' else '❌' if la.status=='rejected' else '⏳' }} {{ la.status.title() }}
+              </span>
+              {% if la.review_note %}
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ la.review_note }}</div>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">No leave applications yet</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% elif tab == 'attendance' %}
+{# ══════ ATTENDANCE TAB ══════ #}
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card-erp p-4" style="border-top:4px solid var(--success);">
+      <div class="section-title mb-3">Today's Punch Card</div>
+
+      <!-- Geo bar -->
+      <div id="geoBar2" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12.5px;">
+        <div id="geoDot2" style="width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;"></div>
+        <span id="geoText2" style="color:var(--text-muted);">Fetching location…</span>
+      </div>
+
+      {# Resolve today's record #}
+      {% set ns = namespace(today_att=none) %}
+      {% for a in emp.attendances %}{% if a.date == today %}{% set ns.today_att = a %}{% endif %}{% endfor %}
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+        {% for punch_num, icon, label, done_val, geo_val in [
+          (1,'sign-in-alt','Session 1 Check-In',  ns.today_att.check_in   if ns.today_att else none, ns.today_att.geo_in   if ns.today_att else false),
+          (2,'sign-out-alt','Session 1 Check-Out', ns.today_att.check_out  if ns.today_att else none, none),
+          (3,'sign-in-alt','Session 2 Check-In',  ns.today_att.check_in2  if ns.today_att else none, ns.today_att.geo_in2  if ns.today_att else false),
+          (4,'sign-out-alt','Session 2 Check-Out', ns.today_att.check_out2 if ns.today_att else none, none)
+        ] %}
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1.5px solid {{ 'rgba(14,173,105,0.3)' if done_val else 'var(--border)' }};background:{{ 'rgba(14,173,105,0.04)' if done_val else 'var(--card-bg)' }};">
+          <div style="width:32px;height:32px;border-radius:8px;background:{{ 'rgba(14,173,105,0.12)' if done_val else 'var(--bg)' }};display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ 'var(--success)' if done_val else 'var(--text-muted)' }};">
+            <i class="fas fa-{{ icon }}"></i>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:600;">{{ label }}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">
+              {% if done_val %}{{ done_val.strftime('%I:%M %p') }}
+                {% if geo_val is not none %}
+                  <span style="color:{{ '#0ead69' if geo_val else '#f5a623' }};">· {{ '✓ In-store' if geo_val else '⚠ Outside' }}</span>
+                {% endif %}
+              {% else %}Not yet{% endif %}
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:800;color:var(--text-muted);background:var(--bg);width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;">{{ punch_num }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if ns.today_att and ns.today_att.check_in %}
+      <div style="background:rgba(14,173,105,0.06);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--text-muted);">Hours worked</span>
+        <span style="font-size:18px;font-weight:800;color:var(--success);">{{ ns.today_att.total_hours }}h</span>
+      </div>
+      {% endif %}
+
+      {% if ns.today_att and ns.today_att.next_action == 'done' %}
+        <div class="btn-erp w-100" style="justify-content:center;background:rgba(14,173,105,0.1);color:var(--success);cursor:default;">
+          <i class="fas fa-check-circle me-2"></i>All 4 punches done today!
+        </div>
+      {% else %}
+        <button id="punchBtn2" onclick="doPunchOrg()" class="btn-erp btn-erp-primary w-100" style="justify-content:center;font-size:15px;padding:13px;">
+          <i class="fas fa-fingerprint me-2"></i>
+          {% if not ns.today_att %}Punch 1 — Session 1 Check-In
+          {% elif not ns.today_att.check_out %}Punch 2 — Session 1 Check-Out
+          {% elif not ns.today_att.check_in2 %}Punch 3 — Session 2 Check-In
+          {% else %}Punch 4 — Session 2 Check-Out{% endif %}
+        </button>
+        <div style="font-size:11.5px;color:var(--text-muted);text-align:center;margin-top:8px;">
+          <i class="fas fa-shield-alt me-1" style="color:var(--info);"></i>GPS verified · {{ store_radius }}m store radius
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card-erp">
+      <div class="p-4" style="border-bottom:1px solid var(--border);">
+        <div class="section-title">Attendance History</div>
+      </div>
+      <div class="p-4">
+        {# Summary #}
+        {% set ns2 = namespace(present=0,absent=0,leave=0) %}
+        {% for a in emp.attendances %}
+          {% if a.status=='present' %}{% set ns2.present=ns2.present+1 %}
+          {% elif a.status=='absent' %}{% set ns2.absent=ns2.absent+1 %}
+          {% elif a.status=='leave' %}{% set ns2.leave=ns2.leave+1 %}{% endif %}
+        {% endfor %}
+        <div class="row g-2 mb-3">
+          <div class="col-4 text-center"><div style="background:var(--bg);border-radius:10px;padding:10px;">
+            <div style="font-size:22px;font-weight:800;color:var(--success);">{{ ns2.present }}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;">PRESENT</div>
+          </div></div>
+          <div class="col-4 text-center"><div style="background:var(--bg);border-radius:10px;padding:10px;">
+            <div style="font-size:22px;font-weight:800;color:var(--accent);">{{ ns2.absent }}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;">ABSENT</div>
+          </div></div>
+          <div class="col-4 text-center"><div style="background:var(--bg);border-radius:10px;padding:10px;">
+            <div style="font-size:22px;font-weight:800;color:var(--warning);">{{ ns2.leave }}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;">LEAVE</div>
+          </div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;">
+          {% set ns3=namespace(c=0) %}
+          {% for a in emp.attendances|sort(attribute='date',reverse=True) %}
+          {% if ns3.c < 30 %}{% set ns3.c=ns3.c+1 %}
+          <div style="padding:10px 12px;background:var(--bg);border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <div>{% if a.status=='present' %}🟢{% elif a.status=='absent' %}🔴{% elif a.status=='half-day' %}🟡{% else %}🔵{% endif %}</div>
+              <div style="font-size:13.5px;font-weight:600;flex:1;">{{ a.date.strftime('%A, %d %B %Y') }}</div>
+              <span class="badge-erp {{ 'badge-success' if a.status=='present' else 'badge-danger' if a.status=='absent' else 'badge-warning' }}" style="font-size:10px;">{{ a.status.title() }}</span>
+              {% if a.check_in %}<span style="font-size:11px;color:var(--text-muted);">{{ a.total_hours }}h</span>{% endif %}
+            </div>
+            {% if a.check_in or a.check_in2 %}
+            <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--text-muted);padding-left:28px;">
+              {% if a.check_in %}<span><i class="fas fa-sign-in-alt me-1" style="color:var(--success);"></i>{{ a.check_in.strftime('%I:%M %p') }}</span>{% endif %}
+              {% if a.check_out %}<span><i class="fas fa-sign-out-alt me-1" style="color:var(--warning);"></i>{{ a.check_out.strftime('%I:%M %p') }}</span>{% endif %}
+              {% if a.check_in2 %}<span style="border-left:1px solid var(--border);padding-left:12px;"><i class="fas fa-sign-in-alt me-1" style="color:var(--success);"></i>{{ a.check_in2.strftime('%I:%M %p') }}</span>{% endif %}
+              {% if a.check_out2 %}<span><i class="fas fa-sign-out-alt me-1" style="color:var(--warning);"></i>{{ a.check_out2.strftime('%I:%M %p') }}</span>{% endif %}
+              {% if a.within_geofence is not none %}
+              <span style="color:{{ '#0ead69' if a.within_geofence else '#f5a623' }};">{{ '✓ Geofence' if a.within_geofence else '⚠ Outside' }}</span>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}{% endfor %}
+          {% if emp.attendances|length == 0 %}<div style="text-align:center;color:var(--text-muted);padding:20px;">No records yet</div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STORE_LAT    = {{ store_lat }};
+const STORE_LNG    = {{ store_lng }};
+const STORE_RADIUS = {{ store_radius }};
+let orgLat = 0, orgLng = 0, orgGeoReady = false;
+
+function calcDistOrg(la1,lo1,la2,lo2){
+  const R=6371000,p1=la1*Math.PI/180,p2=la2*Math.PI/180;
+  const dp=(la2-la1)*Math.PI/180,dl=(lo2-lo1)*Math.PI/180;
+  return 2*R*Math.asin(Math.sqrt(Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2));
+}
+
+{% if tab == 'attendance' %}
+// Start watching GPS
+if(navigator.geolocation){
+  navigator.geolocation.watchPosition(pos=>{
+    orgLat=pos.coords.latitude; orgLng=pos.coords.longitude; orgGeoReady=true;
+    const dist=calcDistOrg(orgLat,orgLng,STORE_LAT,STORE_LNG);
+    const within=dist<=STORE_RADIUS;
+    const dot=document.getElementById('geoDot2');
+    const txt=document.getElementById('geoText2');
+    if(dot){ dot.style.background=within?'#0ead69':'#f5a623'; dot.style.animation=within?'pulse 1.5s infinite':'none'; }
+    if(txt){ txt.innerHTML=within
+      ?`<span style="color:var(--success);font-weight:600;"><i class="fas fa-check-circle me-1"></i>Within store area</span> <span style="color:var(--text-muted);">(${Math.round(dist)}m)</span>`
+      :`<span style="color:var(--warning);font-weight:600;"><i class="fas fa-exclamation-triangle me-1"></i>${Math.round(dist)}m from store</span> <span style="color:var(--text-muted);">— flagged</span>`; }
+  },()=>{ orgGeoReady=true; },{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
+} else { orgGeoReady=true; }
+
+function doPunchOrg(){
+  const btn=document.getElementById('punchBtn2');
+  if(!orgGeoReady){ showToast('Waiting for GPS…','info'); return; }
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin me-2"></i>Recording…';
+  fetch('/attendance/punch',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({lat:orgLat,lng:orgLng})
+  }).then(r=>r.json()).then(d=>{
+    if(d.success){
+      showToast(`✅ Punch ${d.punch}: ${d.message} ${d.within_geofence?'✓ Geofence':'⚠ Outside store'}`, d.within_geofence?'success':'warning');
+      setTimeout(()=>location.reload(),1800);
+    } else if(d.done){
+      showToast('All 4 punches completed today! Total: '+d.total_hours+'h','info');
+      btn.innerHTML='<i class="fas fa-check-circle me-2"></i>All done';
+    } else {
+      showToast(d.error||'Error','danger');
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-fingerprint me-2"></i>Try Again';
+    }
+  }).catch(()=>{ showToast('Network error','danger'); btn.disabled=false; btn.innerHTML='<i class="fas fa-fingerprint me-2"></i>Try Again'; });
+}
+{% endif %}
+</script>
+{% endblock %}

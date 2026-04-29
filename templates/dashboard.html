@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block content %}
+
+<!-- KPI Row -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card revenue">
+      <div class="kpi-icon red"><i class="fas fa-rupee-sign"></i></div>
+      <div class="kpi-label">Today's Revenue</div>
+      <div class="kpi-value">₹{{ "%.0f"|format(today_sales) }}</div>
+      <div class="kpi-sub">Monthly: <strong>₹{{ "%.0f"|format(month_sales) }}</strong></div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card products">
+      <div class="kpi-icon blue"><i class="fas fa-boxes"></i></div>
+      <div class="kpi-label">Total Products</div>
+      <div class="kpi-value">{{ total_products }}</div>
+      <div class="kpi-sub">{% if low_stock_count > 0 %}<span style="color:#e94560;font-weight:600;"><i class="fas fa-exclamation-triangle me-1"></i>{{ low_stock_count }} low stock</span>{% else %}<span style="color:#0ead69">All stocks healthy</span>{% endif %}</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card employees">
+      <div class="kpi-icon green"><i class="fas fa-users"></i></div>
+      <div class="kpi-label">Active Employees</div>
+      <div class="kpi-value">{{ total_employees }}</div>
+      <div class="kpi-sub">{{ today_present }} present today
+        {% if pending_leaves > 0 %} · <span style="color:#f5a623;font-weight:600;">{{ pending_leaves }} leave pending</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card warning">
+      <div class="kpi-icon orange"><i class="fas fa-chart-line"></i></div>
+      <div class="kpi-label">Net Revenue</div>
+      <div class="kpi-value">₹{{ "%.0f"|format(total_revenue - total_returns) }}</div>
+      <div class="kpi-sub">Returns: <span style="color:#e94560;">-₹{{ "%.0f"|format(total_returns) }}</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-8">
+    <div class="card-erp p-4">
+      <div class="section-header">
+        <div><div class="section-title">Sales Trend</div><div class="section-subtitle">Last 7 days</div></div>
+        <a href="{{ url_for('analytics') }}" class="btn-erp btn-erp-secondary btn-erp-sm">Full Analytics <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="chart-container" style="height:240px;"><canvas id="salesTrendChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card-erp p-4">
+      <div class="section-header"><div class="section-title">Category Sales</div></div>
+      <div class="chart-container" style="height:240px;"><canvas id="catChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Row -->
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card-erp">
+      <div class="p-4 pb-3 section-header" style="border-bottom:1px solid var(--border)">
+        <div class="section-title">Recent Transactions</div>
+        <a href="{{ url_for('sales') }}" class="btn-erp btn-erp-secondary btn-erp-sm">View All</a>
+      </div>
+      <table class="table-erp w-100">
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Amount</th><th>Payment</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for sale in recent_sales %}
+          <tr>
+            <td><a href="{{ url_for('view_invoice', sale_id=sale.id) }}" style="color:var(--accent);font-weight:700;text-decoration:none;">{{ sale.invoice_number }}</a></td>
+            <td>{{ sale.customer_name }}</td>
+            <td><strong>₹{{ "%.2f"|format(sale.total_amount) }}</strong>{% if sale.is_returned %}<span class="badge-erp badge-danger ms-1" style="font-size:10px;">RETURNED</span>{% endif %}</td>
+            <td><span class="badge-erp {{ 'badge-success' if sale.payment_method == 'cash' else 'badge-info' if sale.payment_method == 'upi' else 'badge-warning' }}">{{ sale.payment_method.upper() }}</span></td>
+            <td>
+              <div style="display:flex;gap:4px;">
+                <a href="{{ url_for('view_invoice', sale_id=sale.id) }}" class="btn-erp btn-erp-secondary btn-erp-sm" title="View"><i class="fas fa-eye"></i></a>
+                {% if not sale.is_returned %}
+                <a href="{{ url_for('sale_return', sale_id=sale.id) }}" class="btn-erp btn-erp-sm" style="background:rgba(233,69,96,0.1);color:var(--accent);" title="Return"><i class="fas fa-undo"></i></a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No sales yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-xl-5">
+    <!-- Pending Leaves -->
+    {% if pending_leaves > 0 %}
+    <div class="card-erp p-4 mb-3" style="border-left:4px solid var(--warning);">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="section-title" style="font-size:15px;"><i class="fas fa-calendar-times me-2" style="color:var(--warning);"></i>Pending Leave Requests</div>
+        <a href="{{ url_for('leaves') }}" class="btn-erp btn-erp-sm" style="background:rgba(245,166,35,0.1);color:var(--warning);">Review</a>
+      </div>
+      <div style="font-size:28px;font-weight:800;color:var(--warning);font-family:'Space Grotesk',sans-serif;">{{ pending_leaves }}</div>
+      <div style="font-size:13px;color:var(--text-muted);">awaiting your approval</div>
+    </div>
+    {% endif %}
+
+    <!-- Top Products -->
+    <div class="card-erp p-4 mb-3">
+      <div class="section-title mb-3">🏆 Top Products</div>
+      {% for p in top_products %}
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#c0392b);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">{{ loop.index }}</div>
+        <div style="flex:1;font-size:13.5px;font-weight:600;">{{ p.name }}</div>
+        <div style="font-size:12px;color:var(--text-muted);">{{ p.ts }} sold</div>
+      </div>
+      {% else %}<div style="color:var(--text-muted);font-size:13px;">No sales data yet</div>{% endfor %}
+    </div>
+
+    <!-- Low Stock -->
+    {% if low_stock_products %}
+    <div class="card-erp p-4">
+      <div class="section-title mb-3"><i class="fas fa-exclamation-triangle" style="color:var(--accent)"></i> Low Stock Alert</div>
+      {% for p in low_stock_products %}
+      <div class="low-stock-bar">
+        <i class="fas fa-box" style="color:var(--accent)"></i>
+        <div style="flex:1;font-size:13px;font-weight:600;">{{ p.name }}</div>
+        <div class="qty">{{ p.quantity }} left</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trendData = {{ sales_trend|safe }};
+const catData = {{ cat_sales|safe }};
+new Chart(document.getElementById('salesTrendChart'), {
+  type: 'line',
+  data: { labels: trendData.map(d=>d.date), datasets: [{ label:'Revenue (₹)', data:trendData.map(d=>d.amount), borderColor:'#e94560', backgroundColor:'rgba(233,69,96,0.08)', borderWidth:2.5, pointBackgroundColor:'#e94560', pointRadius:5, pointHoverRadius:7, fill:true, tension:0.4 }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{callback:v=>'₹'+v}}, x:{grid:{display:false}} } }
+});
+if (catData.length) {
+  new Chart(document.getElementById('catChart'), {
+    type:'doughnut',
+    data:{ labels:catData.map(d=>d.name), datasets:[{ data:catData.map(d=>d.revenue), backgroundColor:['#e94560','#1a1a2e','#0ead69','#f5a623','#0f3460','#6c5ce7','#fd79a8','#00cec9'], borderWidth:0, hoverOffset:8 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom',labels:{padding:10}}, tooltip:{callbacks:{label:ctx=>` ₹${ctx.raw.toFixed(0)}`}} }, cutout:'68%' }
+  });
+}
+</script>
+{% endblock %}

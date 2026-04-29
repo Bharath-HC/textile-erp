@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice {{ sale.invoice_number }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f0f2f8; padding: 24px; color: #1a1a2e; }
+    .invoice-wrapper { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,0.12); }
+    .invoice-header { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); color: white; padding: 40px; }
+    .store-name { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+    .store-sub { opacity: 0.6; font-size: 13px; margin-top: 4px; }
+    .invoice-badge { background: rgba(233,69,96,0.85); color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
+    .invoice-body { padding: 40px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+    .info-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #8896a4; display: block; margin-bottom: 4px; }
+    .info-group span { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+    .items-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 24px; }
+    .items-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: white; background: #1a1a2e; padding: 12px 14px; }
+    .items-table th:first-child { border-radius: 10px 0 0 0; }
+    .items-table th:last-child { border-radius: 0 10px 0 0; }
+    .items-table td { padding: 14px; font-size: 14px; border-bottom: 1px solid #e8edf2; }
+    .items-table tr:nth-child(even) td { background: #f8f9fa; }
+    .totals { display: flex; justify-content: flex-end; }
+    .totals-box { width: 280px; }
+    .total-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 14px; border-bottom: 1px solid #e8edf2; }
+    .total-grand { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 800; color: #e94560; border-bottom: none; padding-top: 12px; border-top: 2px solid #1a1a2e; margin-top: 4px; }
+    .footer { text-align: center; padding: 24px 40px; background: #f8f9fa; color: #8896a4; font-size: 13px; border-top: 1px solid #e8edf2; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; font-family: inherit; }
+    .btn-primary { background: linear-gradient(135deg, #e94560, #c0392b); color: white; }
+    .btn-secondary { background: #f0f2f8; color: #1a1a2e; }
+    @media print { .no-print { display: none !important; } body { background: white; padding: 0; } .invoice-wrapper { box-shadow: none; border-radius: 0; } }
+  </style>
+</head>
+<body>
+<div class="no-print mb-3" style="max-width:800px;margin:0 auto 16px;display:flex;gap:12px;">
+  <a href="{{ url_for('download_invoice_pdf', sale_id=sale.id) }}" class="btn btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    Download PDF
+  </a>
+  <button onclick="window.print()" class="btn btn-secondary">🖨️ Print</button>
+  <a href="{{ url_for('billing') }}" class="btn btn-secondary">← New Sale</a>
+  <a href="{{ url_for('sales') }}" class="btn btn-secondary">All Sales</a>
+</div>
+
+<div class="invoice-wrapper">
+  <div class="invoice-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="width:48px;height:48px;background:rgba(233,69,96,0.8);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px;">🏬</div>
+        <div class="store-name">Textile Showroom</div>
+        <div class="store-sub">Your Fashion Destination · Davangere, Karnataka</div>
+        <div class="store-sub" style="margin-top:4px;">GST: 29AAXXXX1234Z1 · Tel: +91-99876-54321</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="invoice-badge">TAX INVOICE</div>
+        <div style="margin-top:14px;font-size:22px;font-weight:800;font-family:'Space Grotesk',sans-serif;">{{ sale.invoice_number }}</div>
+        <div style="opacity:0.6;font-size:13px;margin-top:4px;">{{ sale.created_at.strftime('%d %B %Y, %I:%M %p') }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="invoice-body">
+    <div class="info-grid">
+      <div>
+        <div class="info-group mb-3">
+          <label>Bill To</label>
+          <span style="font-size:16px;">{{ sale.customer_name }}</span>
+        </div>
+        {% if sale.customer_phone %}
+        <div class="info-group">
+          <label>Phone</label>
+          <span>{{ sale.customer_phone }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div>
+        <div class="info-group mb-3">
+          <label>Payment Method</label>
+          <span style="text-transform:uppercase;color:{{ '#0ead69' if sale.payment_method == 'cash' else '#0f3460' if sale.payment_method == 'upi' else '#f5a623' }};">
+            {{ sale.payment_method }}
+          </span>
+        </div>
+        <div class="info-group">
+          <label>Billed By</label>
+          <span>{{ sale.staff.full_name if sale.staff else 'Staff' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th style="text-align:center;">Qty</th>
+          <th style="text-align:right;">Unit Price</th>
+          <th style="text-align:right;">GST</th>
+          <th style="text-align:right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in sale.items %}
+        <tr>
+          <td style="color:#8896a4;font-weight:600;">{{ loop.index }}</td>
+          <td>
+            <div style="font-weight:700;">{{ item.product.name if item.product else 'N/A' }}</div>
+            <div style="font-size:11.5px;color:#8896a4;">{{ item.product.category_name if item.product else '' }}</div>
+          </td>
+          <td style="text-align:center;font-weight:700;">{{ item.quantity }}</td>
+          <td style="text-align:right;">₹{{ "%.2f"|format(item.unit_price) }}</td>
+          <td style="text-align:right;color:#8896a4;">{{ item.gst_rate }}%</td>
+          <td style="text-align:right;font-weight:700;color:#1a1a2e;">₹{{ "%.2f"|format(item.total_price) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="totals-box">
+        <div class="total-row">
+          <span style="color:#8896a4;">Subtotal</span>
+          <span>₹{{ "%.2f"|format(sale.subtotal) }}</span>
+        </div>
+        <div class="total-row">
+          <span style="color:#8896a4;">GST Amount</span>
+          <span>₹{{ "%.2f"|format(sale.gst_amount) }}</span>
+        </div>
+        {% if sale.discount > 0 %}
+        <div class="total-row">
+          <span style="color:#0ead69;">Discount</span>
+          <span style="color:#0ead69;">-₹{{ "%.2f"|format(sale.discount) }}</span>
+        </div>
+        {% endif %}
+        <div class="total-row total-grand">
+          <span>TOTAL</span>
+          <span>₹{{ "%.2f"|format(sale.total_amount) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div style="font-size:16px;margin-bottom:6px;">🙏 Thank you for shopping with us!</div>
+    <div>Exchange within 7 days with original bill · No cash refund</div>
+    <div style="margin-top:8px;font-size:12px;">This is a computer-generated invoice and does not require a signature.</div>
+  </div>
+</div>
+</body>
+</html>

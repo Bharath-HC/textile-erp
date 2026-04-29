@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% block title %}Point of Sale{% endblock %}
+{% block page_title %}Point of Sale — Billing{% endblock %}
+
+{% block content %}
+<div class="pos-layout">
+  <!-- Left: Product Search & Selection -->
+  <div class="pos-products">
+    <!-- Search & Barcode -->
+    <div class="card-erp p-3 mb-3">
+      <div class="d-flex gap-3 align-items-center">
+        <div style="flex:1;position:relative;">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);"></i>
+          <input type="text" id="productSearch" class="form-control"
+                 style="padding-left:36px;border-radius:10px;border:1.5px solid var(--border);"
+                 placeholder="Search product or scan barcode...">
+        </div>
+        <button class="btn-erp btn-erp-secondary" onclick="openBarcodeScanner()" title="Scan Barcode">
+          <i class="fas fa-camera"></i> Scan
+        </button>
+      </div>
+      <!-- Search Results -->
+      <div id="posSearchResults" style="display:none;margin-top:8px;" class="card-erp p-0">
+        <div id="posResultsList"></div>
+      </div>
+    </div>
+
+    <!-- Customer Info -->
+    <div class="card-erp p-3 mb-3">
+      <div class="section-title mb-3" style="font-size:15px;">Customer Details</div>
+      <div class="row g-2">
+        <div class="col-md-7">
+          <input type="text" id="customerName" class="form-control"
+                 style="border-radius:10px;border:1.5px solid var(--border);"
+                 placeholder="Customer name (optional)" value="Walk-in Customer">
+        </div>
+        <div class="col-md-5">
+          <input type="text" id="customerPhone" class="form-control"
+                 style="border-radius:10px;border:1.5px solid var(--border);"
+                 placeholder="Phone number">
+        </div>
+      </div>
+    </div>
+
+    <!-- Recently Added / Quick Picks -->
+    <div class="card-erp p-3">
+      <div class="section-title mb-3" style="font-size:15px;">Quick Add — Recent Products</div>
+      <div class="row g-2" id="quickProducts">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:20px;padding:28px;width:520px;max-width:95vw;position:relative;">
+        <button onclick="closeBarcodeScanner()" style="position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:#8896a4;">×</button>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">📷 Barcode Scanner</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Point camera at barcode, or enter manually below</div>
+        <video id="scannerVideo" style="width:100%;border-radius:12px;background:#000;max-height:280px;"></video>
+        <div style="margin-top:16px;">
+          <div class="d-flex gap-2">
+            <input type="text" id="manualBarcode" class="form-control" placeholder="Or type barcode manually..."
+                   style="border-radius:10px;" onkeydown="if(event.key==='Enter')manualScan()">
+            <button class="btn-erp btn-erp-primary" onclick="manualScan()">
+              <i class="fas fa-search"></i> Search
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Cart -->
+  <div class="pos-cart">
+    <div class="pos-cart-header">
+      <i class="fas fa-shopping-cart me-2" style="color:var(--accent);"></i>
+      Cart <span id="cartCount" class="badge ms-2" style="background:var(--accent);color:white;border-radius:20px;font-size:12px;">0</span>
+    </div>
+
+    <div class="cart-items" id="cartItems">
+      <div id="emptyCart" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+        <i class="fas fa-shopping-cart" style="font-size:40px;margin-bottom:12px;opacity:0.3;"></i>
+        <div style="font-size:14px;">Cart is empty</div>
+        <div style="font-size:12px;margin-top:4px;">Search or scan products to add</div>
+      </div>
+    </div>
+
+    <div class="cart-totals">
+      <!-- Payment Method -->
+      <div class="mb-3">
+        <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Payment Method</label>
+        <div class="d-flex gap-2" id="paymentBtns">
+          <button class="pay-btn active" data-method="cash" onclick="selectPayment('cash')"><i class="fas fa-money-bill-wave me-1"></i>Cash</button>
+          <button class="pay-btn" data-method="card" onclick="selectPayment('card')"><i class="fas fa-credit-card me-1"></i>Card</button>
+          <button class="pay-btn" data-method="upi" onclick="selectPayment('upi')"><i class="fas fa-mobile-alt me-1"></i>UPI</button>
+        </div>
+      </div>
+
+      <div class="total-row">
+        <span>Subtotal</span>
+        <span id="subtotalDisplay">₹0.00</span>
+      </div>
+      <div class="total-row">
+        <span>GST</span>
+        <span id="gstDisplay">₹0.00</span>
+      </div>
+      <div class="total-row">
+        <span style="display:flex;align-items:center;gap:6px;">
+          Discount
+          <input type="number" id="discountInput" min="0" value="0"
+                 style="width:60px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;font-size:12px;text-align:center;"
+                 oninput="recalculate()">
+        </span>
+        <span id="discountDisplay">-₹0.00</span>
+      </div>
+      <div class="total-row grand">
+        <span>TOTAL</span>
+        <span id="totalDisplay" style="color:var(--accent);">₹0.00</span>
+      </div>
+
+      <button class="btn-erp btn-erp-success w-100 mt-3" onclick="completeSale()" id="checkoutBtn" disabled
+              style="justify-content:center;font-size:16px;padding:14px;">
+        <i class="fas fa-check-circle"></i> Complete Sale
+      </button>
+      <button class="btn-erp btn-erp-secondary w-100 mt-2" onclick="clearCart()" style="justify-content:center;">
+        <i class="fas fa-trash"></i> Clear Cart
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.pay-btn {
+  flex: 1; padding: 8px 6px; border: 1.5px solid var(--border);
+  border-radius: 8px; background: var(--bg); cursor: pointer;
+  font-size: 12.5px; font-weight: 600; font-family: inherit;
+  transition: all 0.2s; color: var(--text-muted);
+}
+.pay-btn.active {
+  border-color: var(--accent); background: rgba(233,69,96,0.08); color: var(--accent);
+}
+.pos-search-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background 0.15s; font-size: 13.5px;
+}
+.pos-search-item:hover { background: var(--bg); }
+.pos-search-item:last-child { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cart = [];
+let paymentMethod = 'cash';
+
+// Load quick products
+fetch('/api/product/search?q=')
+  .then(r => r.json())
+  .then(products => {
+    const container = document.getElementById('quickProducts');
+    container.innerHTML = products.slice(0, 8).map(p => `
+      <div class="col-6 col-md-3">
+        <div onclick="addToCart(${p.id},'${p.name.replace(/'/g,"\\'")}',${p.price},${p.gst_rate},${p.quantity})"
+             style="border:1.5px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;transition:all 0.2s;text-align:center;background:var(--card-bg);"
+             onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+          <div style="font-size:22px;margin-bottom:4px;">👕</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">${p.name.substring(0,20)}${p.name.length>20?'...':''}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent);">₹${p.price}</div>
+        </div>
+      </div>`).join('');
+  });
+
+// Search
+let searchDebounce;
+document.getElementById('productSearch').addEventListener('input', function() {
+  clearTimeout(searchDebounce);
+  const q = this.value.trim();
+  if (!q) { document.getElementById('posSearchResults').style.display = 'none'; return; }
+  searchDebounce = setTimeout(() => {
+    fetch(`/api/product/search?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(products => {
+        const list = document.getElementById('posResultsList');
+        if (!products.length) { document.getElementById('posSearchResults').style.display = 'none'; return; }
+        list.innerHTML = products.map(p => `
+          <div class="pos-search-item" onclick="addToCart(${p.id},'${p.name.replace(/'/g,"\\'")}',${p.price},${p.gst_rate},${p.quantity})">
+            <i class="fas fa-tshirt" style="color:var(--text-muted);width:20px;text-align:center;"></i>
+            <div style="flex:1;">
+              <div style="font-weight:600;">${p.name}</div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${p.category} · ${p.barcode || 'No barcode'} · Stock: ${p.quantity}</div>
+            </div>
+            <div style="font-weight:700;color:var(--accent);">₹${p.price}</div>
+          </div>`).join('');
+        document.getElementById('posSearchResults').style.display = 'block';
+      });
+  }, 250);
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#productSearch') && !e.target.closest('#posSearchResults'))
+    document.getElementById('posSearchResults').style.display = 'none';
+});
+
+function addToCart(id, name, price, gst_rate, stock) {
+  const existing = cart.find(i => i.product_id === id);
+  if (existing) {
+    if (existing.quantity < stock) existing.quantity++;
+    else { showToast(`Only ${stock} in stock`, 'warning'); return; }
+  } else {
+    cart.push({ product_id: id, name, price, gst_rate, quantity: 1, stock });
+  }
+  renderCart();
+  document.getElementById('productSearch').value = '';
+  document.getElementById('posSearchResults').style.display = 'none';
+  showToast(`${name} added to cart`, 'success');
+}
+
+function renderCart() {
+  const container = document.getElementById('cartItems');
+  const empty = document.getElementById('emptyCart');
+  const countBadge = document.getElementById('cartCount');
+  if (!cart.length) {
+    container.innerHTML = '';
+    container.appendChild(empty);
+    empty.style.display = 'flex';
+    countBadge.textContent = '0';
+    document.getElementById('checkoutBtn').disabled = true;
+    recalculate();
+    return;
+  }
+  empty.style.display = 'none';
+  container.innerHTML = cart.map((item, i) => `
+    <div class="cart-item">
+      <div style="flex:1;">
+        <div class="cart-item-name">${item.name}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);">₹${item.price} × ${item.quantity} = <strong>₹${(item.price * item.quantity).toFixed(2)}</strong></div>
+        ${item.gst_rate > 0 ? `<div style="font-size:10.5px;color:var(--text-muted);">GST ${item.gst_rate}%</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="cart-qty-btn" onclick="changeQty(${i}, -1)">−</button>
+        <span class="cart-qty-num">${item.quantity}</span>
+        <button class="cart-qty-btn" onclick="changeQty(${i}, 1)">+</button>
+        <button class="cart-qty-btn" onclick="removeItem(${i})" style="color:var(--accent);">×</button>
+      </div>
+    </div>`).join('');
+  container.appendChild(empty);
+  countBadge.textContent = cart.reduce((s, i) => s + i.quantity, 0);
+  document.getElementById('checkoutBtn').disabled = false;
+  recalculate();
+}
+
+function changeQty(index, delta) {
+  cart[index].quantity += delta;
+  if (cart[index].quantity < 1) cart.splice(index, 1);
+  else if (cart[index].quantity > cart[index].stock) {
+    cart[index].quantity = cart[index].stock;
+    showToast('Max stock reached', 'warning');
+  }
+  renderCart();
+}
+function removeItem(index) { cart.splice(index, 1); renderCart(); }
+function clearCart() { if (confirm('Clear the cart?')) { cart = []; renderCart(); } }
+
+function recalculate() {
+  const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const gst = cart.reduce((s, i) => s + (i.price * i.quantity * i.gst_rate / 100), 0);
+  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+  const total = subtotal + gst - discount;
+  document.getElementById('subtotalDisplay').textContent = '₹' + subtotal.toFixed(2);
+  document.getElementById('gstDisplay').textContent = '₹' + gst.toFixed(2);
+  document.getElementById('discountDisplay').textContent = '-₹' + discount.toFixed(2);
+  document.getElementById('totalDisplay').textContent = '₹' + Math.max(0, total).toFixed(2);
+}
+
+function selectPayment(method) {
+  paymentMethod = method;
+  document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-method="${method}"]`).classList.add('active');
+}
+
+function completeSale() {
+  if (!cart.length) return;
+  const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const gst = cart.reduce((s, i) => s + (i.price * i.quantity * i.gst_rate / 100), 0);
+  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+  showSpinner();
+  fetch('/billing/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items: cart.map(i => ({
+        product_id: i.product_id,
+        quantity: i.quantity,
+        price: i.price,
+        gst_rate: i.gst_rate,
+        total: i.price * i.quantity + (i.price * i.quantity * i.gst_rate / 100)
+      })),
+      customer_name: document.getElementById('customerName').value || 'Walk-in Customer',
+      customer_phone: document.getElementById('customerPhone').value || '',
+      subtotal: subtotal,
+      gst_amount: gst,
+      discount: discount,
+      total: Math.max(0, subtotal + gst - discount),
+      payment_method: paymentMethod
+    })
+  }).then(r => r.json()).then(data => {
+    hideSpinner();
+    if (data.success) {
+      cart = [];
+      renderCart();
+      document.getElementById('discountInput').value = 0;
+      recalculate();
+      showToast(`✅ Sale complete! Invoice: ${data.invoice_number}`, 'success');
+      setTimeout(() => {
+        if (confirm(`Sale completed! Invoice: ${data.invoice_number}\n\nView invoice?`))
+          window.open(`/billing/invoice/${data.sale_id}`, '_blank');
+      }, 500);
+    } else {
+      showToast(data.error || 'Sale failed', 'danger');
+    }
+  }).catch(() => { hideSpinner(); showToast('Network error', 'danger'); });
+}
+
+// Barcode Scanner
+function openBarcodeScanner() {
+  const modal = document.getElementById('scannerModal');
+  modal.style.display = 'flex';
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => { document.getElementById('scannerVideo').srcObject = stream; document.getElementById('scannerVideo').play(); })
+      .catch(() => showToast('Camera not available. Use manual entry.', 'warning'));
+  }
+  setTimeout(() => document.getElementById('manualBarcode').focus(), 300);
+}
+function closeBarcodeScanner() {
+  document.getElementById('scannerModal').style.display = 'none';
+  const video = document.getElementById('scannerVideo');
+  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+}
+function manualScan() {
+  const bc = document.getElementById('manualBarcode').value.trim();
+  if (!bc) return;
+  fetch(`/api/product/barcode/${encodeURIComponent(bc)}`)
+    .then(r => r.json()).then(data => {
+      if (data.id) {
+        addToCart(data.id, data.name, data.price, data.gst_rate, data.quantity);
+        closeBarcodeScanner();
+        document.getElementById('manualBarcode').value = '';
+      } else showToast('Product not found for this barcode', 'danger');
+    });
+}
+document.getElementById('manualBarcode').addEventListener('keydown', e => {
+  if (e.key === 'Enter') manualScan();
+});
+</script>
+{% endblock %}

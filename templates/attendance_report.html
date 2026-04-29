@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Report{% endblock %}
+{% block page_title %}Attendance Report{% endblock %}
+
+{% block content %}
+<div class="d-flex gap-3 mb-4 flex-wrap align-items-center">
+  <div>
+    <div class="section-title">Monthly Attendance Report</div>
+    <div class="section-subtitle">{{ month_date.strftime('%B %Y') }}</div>
+  </div>
+  <div class="ms-auto d-flex gap-2">
+    <form method="GET" class="d-flex gap-2">
+      <input type="month" name="month" value="{{ month }}"
+             class="form-control" style="width:160px;border-radius:10px;border:1.5px solid var(--border);">
+      <button type="submit" class="btn-erp btn-erp-primary btn-erp-sm"><i class="fas fa-search"></i> View</button>
+    </form>
+    <a href="{{ url_for('attendance') }}" class="btn-erp btn-erp-secondary btn-erp-sm">
+      <i class="fas fa-arrow-left"></i> Back
+    </a>
+  </div>
+</div>
+
+<div class="card-erp" style="overflow-x:auto;">
+  <table class="table-erp" style="min-width:800px;">
+    <thead>
+      <tr>
+        <th style="position:sticky;left:0;background:#f0f2f8;z-index:1;min-width:160px;">Employee</th>
+        {% for day in days %}
+        <th style="text-align:center;min-width:38px;font-size:10px;padding:8px 4px;">
+          <div>{{ day.strftime('%d') }}</div>
+          <div style="font-weight:400;opacity:0.7;">{{ day.strftime('%a')[:1] }}</div>
+        </th>
+        {% endfor %}
+        <th style="text-align:center;min-width:60px;">Present</th>
+        <th style="text-align:center;min-width:60px;">Absent</th>
+        <th style="text-align:center;min-width:60px;">%</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for emp in employees %}
+      {% set emp_records = records.get(emp.id, {}) %}
+      {% set present_count = namespace(val=0) %}
+      {% set absent_count = namespace(val=0) %}
+      <tr>
+        <td style="position:sticky;left:0;background:white;z-index:1;font-weight:600;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#c0392b);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">
+              {{ emp.full_name[0].upper() }}
+            </div>
+            <div>
+              <div style="font-size:13px;">{{ emp.full_name }}</div>
+              <div style="font-size:11px;color:var(--text-muted);">{{ emp.role }}</div>
+            </div>
+          </div>
+        </td>
+        {% for day in days %}
+        {% set rec = emp_records.get(day) %}
+        <td style="text-align:center;padding:6px 2px;">
+          {% if rec %}
+            {% if rec.status == 'present' %}
+              {% set _ = present_count.__setattr__('val', present_count.val + 1) %}
+              <span title="Present - {{ rec.check_in.strftime('%I:%M %p') if rec.check_in else 'No time' }}" style="cursor:help;">🟢</span>
+            {% elif rec.status == 'absent' %}
+              {% set _ = absent_count.__setattr__('val', absent_count.val + 1) %}
+              <span title="Absent">🔴</span>
+            {% elif rec.status == 'half-day' %}
+              {% set _ = present_count.__setattr__('val', present_count.val + 1) %}
+              <span title="Half Day">🟡</span>
+            {% elif rec.status == 'leave' %}
+              <span title="Leave">🔵</span>
+            {% endif %}
+          {% else %}
+            <span style="color:#d1d8e0;font-size:10px;">—</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+        <td style="text-align:center;font-weight:700;color:var(--success);">{{ present_count.val }}</td>
+        <td style="text-align:center;font-weight:700;color:var(--danger);">{{ absent_count.val }}</td>
+        <td style="text-align:center;">
+          {% set pct = (present_count.val / days|length * 100)|int if days else 0 %}
+          <span class="badge-erp {{ 'badge-success' if pct >= 80 else 'badge-warning' if pct >= 60 else 'badge-danger' }}">{{ pct }}%</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="mt-3" style="display:flex;gap:20px;font-size:12.5px;color:var(--text-muted);">
+  <span>🟢 Present</span>
+  <span>🔴 Absent</span>
+  <span>🟡 Half Day</span>
+  <span>🔵 Leave</span>
+  <span>— Not Marked</span>
+</div>
+{% endblock %}

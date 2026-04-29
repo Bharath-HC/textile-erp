@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Sales Analytics{% endblock %}
+
+{% block content %}
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="kpi-card revenue">
+      <div class="kpi-icon red"><i class="fas fa-rupee-sign"></i></div>
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value">₹{{ "%.0f"|format(total_revenue) }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="kpi-card products">
+      <div class="kpi-icon blue"><i class="fas fa-receipt"></i></div>
+      <div class="kpi-label">Total Orders</div>
+      <div class="kpi-value">{{ total_orders }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="kpi-card employees">
+      <div class="kpi-icon green"><i class="fas fa-chart-bar"></i></div>
+      <div class="kpi-label">Avg Order Value</div>
+      <div class="kpi-value">₹{{ "%.0f"|format(avg_order) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-8">
+    <div class="card-erp p-4">
+      <div class="section-title mb-1">Monthly Revenue Trend</div>
+      <div class="section-subtitle mb-3">Last 6 months performance</div>
+      <div class="chart-container" style="height:280px;">
+        <canvas id="monthlyChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card-erp p-4">
+      <div class="section-title mb-1">Payment Methods</div>
+      <div class="section-subtitle mb-3">Distribution by method</div>
+      <div class="chart-container" style="height:280px;">
+        <canvas id="payChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card-erp p-4">
+      <div class="section-title mb-1">Top 10 Products</div>
+      <div class="section-subtitle mb-3">By units sold</div>
+      <div class="chart-container" style="height:320px;">
+        <canvas id="topProductsChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card-erp p-4">
+      <div class="section-title mb-1">Category Performance</div>
+      <div class="section-subtitle mb-3">Revenue by category</div>
+      <div class="chart-container" style="height:320px;">
+        <canvas id="catChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const monthlyData = {{ monthly|safe }};
+const topProducts = {{ top_products|safe }};
+const catData = {{ cat_data|safe }};
+const payData = {{ pay_data|safe }};
+const COLORS = ['#e94560','#1a1a2e','#0ead69','#f5a623','#0f3460','#6c5ce7','#fd79a8','#00cec9','#a29bfe','#fab1a0'];
+
+// Monthly Bar Chart
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: monthlyData.map(d => d.month),
+    datasets: [{
+      label: 'Revenue (₹)',
+      data: monthlyData.map(d => d.amount),
+      backgroundColor: monthlyData.map((_, i) => i === monthlyData.length - 1 ? '#e94560' : 'rgba(233,69,96,0.25)'),
+      borderColor: '#e94560', borderWidth: 1.5,
+      borderRadius: 8, borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// Payment Pie
+new Chart(document.getElementById('payChart'), {
+  type: 'pie',
+  data: {
+    labels: payData.map(p => p.method.toUpperCase()),
+    datasets: [{
+      data: payData.map(p => p.count),
+      backgroundColor: ['#e94560','#0ead69','#f5a623','#0f3460'],
+      borderWidth: 0, hoverOffset: 10
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} orders` } }
+    }
+  }
+});
+
+// Top Products Horizontal Bar
+new Chart(document.getElementById('topProductsChart'), {
+  type: 'bar',
+  data: {
+    labels: topProducts.map(p => p.name.length > 20 ? p.name.substring(0,20)+'…' : p.name),
+    datasets: [{
+      label: 'Units Sold',
+      data: topProducts.map(p => p.qty),
+      backgroundColor: COLORS.slice(0, topProducts.length),
+      borderRadius: 6
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { grid: { display: false }, ticks: { font: { size: 12 } } }
+    }
+  }
+});
+
+// Category Doughnut
+new Chart(document.getElementById('catChart'), {
+  type: 'doughnut',
+  data: {
+    labels: catData.map(c => c.name),
+    datasets: [{
+      data: catData.map(c => c.revenue),
+      backgroundColor: COLORS,
+      borderWidth: 0, hoverOffset: 10
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 12, font: { size: 12 } } },
+      tooltip: { callbacks: { label: ctx => ` ₹${ctx.raw.toLocaleString('en-IN')}` } }
+    },
+    cutout: '60%'
+  }
+});
+</script>
+{% endblock %}

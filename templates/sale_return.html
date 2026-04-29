@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% block title %}Process Return{% endblock %}
+{% block page_title %}Process Sales Return{% endblock %}
+{% block content %}
+
+<div style="max-width:860px;margin:0 auto;">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('sales') }}" class="btn-erp btn-erp-secondary btn-erp-sm"><i class="fas fa-arrow-left"></i> Back</a>
+    <div>
+      <div class="section-title">Return — {{ sale.invoice_number }}</div>
+      <div class="section-subtitle">{{ sale.customer_name }} · {{ sale.created_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+    </div>
+  </div>
+
+  <!-- Original Invoice Summary -->
+  <div class="card-erp p-4 mb-4" style="border-left:4px solid var(--info);">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Invoice</div>
+        <div style="font-weight:700;font-size:15px;color:var(--accent);">{{ sale.invoice_number }}</div>
+      </div>
+      <div class="col-md-3">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Customer</div>
+        <div style="font-weight:600;">{{ sale.customer_name }}</div>
+        <div style="font-size:12px;color:var(--text-muted);">{{ sale.customer_phone or '' }}</div>
+      </div>
+      <div class="col-md-3">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Total Paid</div>
+        <div style="font-weight:800;font-size:18px;color:var(--text);">₹{{ "%.2f"|format(sale.total_amount) }}</div>
+      </div>
+      <div class="col-md-3">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Payment</div>
+        <div><span class="badge-erp badge-info">{{ sale.payment_method.upper() }}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Return Form -->
+  <div class="card-erp p-4 mb-4">
+    <div class="section-title mb-3">Customer Details for Return</div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" style="font-size:13px;font-weight:600;">Customer Name</label>
+        <input type="text" id="retCustomerName" class="form-control" value="{{ sale.customer_name }}" style="border-radius:10px;border:1.5px solid var(--border);">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" style="font-size:13px;font-weight:600;">Phone</label>
+        <input type="text" id="retCustomerPhone" class="form-control" value="{{ sale.customer_phone or '' }}" style="border-radius:10px;border:1.5px solid var(--border);">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" style="font-size:13px;font-weight:600;">Return Reason</label>
+        <input type="text" id="retReason" class="form-control" placeholder="e.g. Size issue, defective..." style="border-radius:10px;border:1.5px solid var(--border);">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" style="font-size:13px;font-weight:600;">Refund Method</label>
+        <select id="retMethod" class="form-select" style="border-radius:10px;border:1.5px solid var(--border);">
+          <option value="cash">Cash</option>
+          <option value="upi">UPI</option>
+          <option value="card">Card</option>
+          <option value="store_credit">Store Credit</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Select Items to Return -->
+  <div class="card-erp p-4 mb-4">
+    <div class="section-title mb-3">Select Items to Return</div>
+    <table class="table-erp" id="returnTable">
+      <thead>
+        <tr>
+          <th>
+            <input type="checkbox" id="selectAll" onchange="toggleAll(this)" style="cursor:pointer;">
+          </th>
+          <th>Product</th>
+          <th>Purchased Qty</th>
+          <th>Already Returned</th>
+          <th>Return Qty</th>
+          <th>Unit Price</th>
+          <th>Refund Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in sale.items %}
+        {% set returnable = item.quantity - (item.returned_qty or 0) %}
+        <tr id="row_{{ item.id }}" data-si-id="{{ item.id }}" data-product-id="{{ item.product_id }}" data-price="{{ item.unit_price }}" data-max="{{ returnable }}">
+          <td>
+            <input type="checkbox" class="item-check" data-id="{{ item.id }}"
+                   onchange="toggleRow(this)" {{ 'disabled' if returnable == 0 }}>
+          </td>
+          <td>
+            <div style="font-weight:600;">{{ item.product.name if item.product else 'N/A' }}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">{{ item.product.category_name if item.product else '' }}</div>
+          </td>
+          <td style="font-weight:700;">{{ item.quantity }}</td>
+          <td>
+            {% if item.returned_qty and item.returned_qty > 0 %}
+            <span class="badge-erp badge-warning">{{ item.returned_qty }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <input type="number" class="qty-input form-control" id="qty_{{ item.id }}"
+                   min="1" max="{{ returnable }}" value="{{ returnable }}"
+                   style="width:70px;border-radius:8px;border:1.5px solid var(--border);"
+                   onchange="calcRefund({{ item.id }}, {{ item.unit_price }})"
+                   {{ 'disabled' if returnable == 0 }}>
+            {% if returnable == 0 %}
+            <div style="font-size:11px;color:var(--success);">Fully returned</div>
+            {% endif %}
+          </td>
+          <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
+          <td id="refund_{{ item.id }}" style="font-weight:700;color:var(--accent);">
+            {{ '₹%.2f'|format(item.unit_price * returnable) if returnable > 0 else '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Return Summary -->
+  <div class="card-erp p-4 mb-4" style="border-top:4px solid var(--accent);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:13px;color:var(--text-muted);">Total Refund Amount</div>
+        <div id="totalRefundDisplay" style="font-size:32px;font-weight:800;color:var(--accent);font-family:'Space Grotesk',sans-serif;">₹0.00</div>
+        <div id="selectedItemsInfo" style="font-size:12.5px;color:var(--text-muted);">No items selected</div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="processReturn()" id="processBtn" class="btn-erp btn-erp-primary" disabled style="font-size:16px;padding:12px 28px;">
+          <i class="fas fa-undo-alt"></i> Process Return
+        </button>
+        <a href="{{ url_for('view_invoice', sale_id=sale.id) }}" class="btn-erp btn-erp-secondary">
+          <i class="fas fa-eye"></i> View Invoice
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:36px;width:440px;max-width:95vw;text-align:center;">
+    <div style="font-size:56px;margin-bottom:12px;">✅</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px;">Return Processed!</div>
+    <div id="returnDetails" style="font-size:14px;color:var(--text-muted);margin-bottom:20px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button id="downloadCreditBtn" onclick="downloadCredit()" class="btn-erp btn-erp-primary" style="flex:1;justify-content:center;">
+        <i class="fas fa-download"></i> Credit Note PDF
+      </button>
+      <a href="{{ url_for('all_returns') }}" class="btn-erp btn-erp-secondary" style="flex:1;justify-content:center;">View All Returns</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let returnId = null;
+
+function toggleAll(master) {
+  document.querySelectorAll('.item-check:not([disabled])').forEach(cb => {
+    cb.checked = master.checked;
+    toggleRow(cb);
+  });
+  updateSummary();
+}
+
+function toggleRow(cb) {
+  const row = document.getElementById('row_' + cb.dataset.id);
+  if (cb.checked) {
+    row.style.background = 'rgba(233,69,96,0.04)';
+  } else {
+    row.style.background = '';
+  }
+  updateSummary();
+}
+
+function calcRefund(id, price) {
+  const qty = parseInt(document.getElementById('qty_' + id).value) || 0;
+  document.getElementById('refund_' + id).textContent = '₹' + (price * qty).toFixed(2);
+  updateSummary();
+}
+
+function updateSummary() {
+  let total = 0, count = 0;
+  document.querySelectorAll('.item-check:checked').forEach(cb => {
+    const id = cb.dataset.id;
+    const row = document.getElementById('row_' + id);
+    const price = parseFloat(row.dataset.price);
+    const qty = parseInt(document.getElementById('qty_' + id).value) || 0;
+    total += price * qty; count++;
+  });
+  document.getElementById('totalRefundDisplay').textContent = '₹' + total.toFixed(2);
+  document.getElementById('selectedItemsInfo').textContent = count ? `${count} item(s) selected for return` : 'No items selected';
+  document.getElementById('processBtn').disabled = count === 0;
+}
+
+function processReturn() {
+  const items = [];
+  document.querySelectorAll('.item-check:checked').forEach(cb => {
+    const id = cb.dataset.id;
+    const row = document.getElementById('row_' + id);
+    const qty = parseInt(document.getElementById('qty_' + id).value) || 0;
+    const price = parseFloat(row.dataset.price);
+    if (qty > 0) {
+      items.push({ sale_item_id: parseInt(id), product_id: parseInt(row.dataset.productId), qty, refund: price * qty });
+    }
+  });
+  if (!items.length) { showToast('Select items to return', 'warning'); return; }
+  const btn = document.getElementById('processBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items,
+      customer_name: document.getElementById('retCustomerName').value,
+      customer_phone: document.getElementById('retCustomerPhone').value,
+      reason: document.getElementById('retReason').value,
+      refund_method: document.getElementById('retMethod').value
+    })
+  }).then(r => r.json()).then(data => {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-undo-alt"></i> Process Return';
+    if (data.success) {
+      returnId = data.return_id;
+      document.getElementById('returnDetails').innerHTML = `Return <strong>${data.return_number}</strong><br>Refund: <strong style="color:var(--accent)">₹${data.refund.toFixed(2)}</strong>`;
+      document.getElementById('successModal').style.display = 'flex';
+    } else {
+      showToast(data.error || 'Return failed', 'danger');
+    }
+  });
+}
+
+function downloadCredit() {
+  if (returnId) window.open(`/sales/return/credit/${returnId}/pdf`, '_blank');
+}
+</script>
+{% endblock %}
