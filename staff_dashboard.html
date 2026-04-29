@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% block title %}My Dashboard{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="card-erp p-4 mb-4" style="background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 100%);color:white;border:none;">
+  <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+    <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex-shrink:0;">
+      {{ current_user.full_name[0].upper() if current_user.full_name else '?' }}
+    </div>
+    <div>
+      <div style="font-size:22px;font-weight:800;font-family:'Space Grotesk',sans-serif;">
+        Good {{ 'Morning' if today.strftime('%H')|int < 12 else 'Afternoon' if today.strftime('%H')|int < 17 else 'Evening' }},
+        {{ (current_user.full_name or '').split()[0] }}! 👋
+      </div>
+      <div style="opacity:0.7;font-size:14px;margin-top:4px;">
+        {{ today.strftime('%A, %d %B %Y') }}
+        {% if emp %} · {{ emp.role }} — {{ emp.department or 'General' }}{% endif %}
+      </div>
+    </div>
+    <div class="ms-auto text-end">
+      <div style="font-size:12px;opacity:0.6;">Employee ID</div>
+      <div style="font-size:18px;font-weight:700;">{{ emp.employee_id if emp else '—' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- ── Attendance Punch Card ── -->
+  <div class="col-lg-5">
+    <div class="card-erp p-4 h-100">
+      <div class="section-title mb-3" style="font-size:15px;">
+        <i class="fas fa-fingerprint me-2" style="color:var(--accent);"></i>Today's Attendance
+        <span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:6px;">{{ today.strftime('%d %b %Y') }}</span>
+      </div>
+
+      <!-- Geo Status Bar -->
+      <div id="geoBar" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12.5px;">
+        <div id="geoDot" style="width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;"></div>
+        <span id="geoText" style="color:var(--text-muted);">Fetching your location…</span>
+      </div>
+
+      <!-- 4 Punch Timeline -->
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;" id="punchTimeline">
+        {% set att = today_att %}
+
+        <!-- Punch 1 — Session 1 Check-In -->
+        <div class="punch-row {{ 'done' if att and att.check_in else 'next' if not att else 'pending' }}" id="p1">
+          <div class="punch-icon {{ 'green' if att and att.check_in else 'red' if not att else 'grey' }}">
+            <i class="fas fa-sign-in-alt"></i>
+          </div>
+          <div style="flex:1;">
+            <div class="punch-label">Session 1 — Check In</div>
+            <div class="punch-time">
+              {% if att and att.check_in %}
+                {{ att.check_in.strftime('%I:%M %p') }}
+                {% if att.geo_in %}<span class="geo-ok">✓ In-store</span>{% else %}<span class="geo-warn">⚠ Outside</span>{% endif %}
+              {% else %}
+                <span style="color:var(--text-muted);">Not yet</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="punch-num">1</div>
+        </div>
+
+        <!-- Punch 2 — Session 1 Check-Out -->
+        <div class="punch-row {{ 'done' if att and att.check_out else 'pending' }}" id="p2">
+          <div class="punch-icon {{ 'orange' if att and att.check_out else 'grey' }}">
+            <i class="fas fa-sign-out-alt"></i>
+          </div>
+          <div style="flex:1;">
+            <div class="punch-label">Session 1 — Check Out</div>
+            <div class="punch-time">
+              {% if att and att.check_out %}{{ att.check_out.strftime('%I:%M %p') }}
+              {% else %}<span style="color:var(--text-muted);">Not yet</span>{% endif %}
+            </div>
+          </div>
+          <div class="punch-num">2</div>
+        </div>
+
+        <!-- Punch 3 — Session 2 Check-In -->
+        <div class="punch-row {{ 'done' if att and att.check_in2 else 'pending' }}" id="p3">
+          <div class="punch-icon {{ 'green' if att and att.check_in2 else 'grey' }}">
+            <i class="fas fa-sign-in-alt"></i>
+          </div>
+          <div style="flex:1;">
+            <div class="punch-label">Session 2 — Check In</div>
+            <div class="punch-time">
+              {% if att and att.check_in2 %}
+                {{ att.check_in2.strftime('%I:%M %p') }}
+                {% if att.geo_in2 %}<span class="geo-ok">✓ In-store</span>{% else %}<span class="geo-warn">⚠ Outside</span>{% endif %}
+              {% else %}<span style="color:var(--text-muted);">Not yet</span>{% endif %}
+            </div>
+          </div>
+          <div class="punch-num">3</div>
+        </div>
+
+        <!-- Punch 4 — Session 2 Check-Out -->
+        <div class="punch-row {{ 'done' if att and att.check_out2 else 'pending' }}" id="p4">
+          <div class="punch-icon {{ 'orange' if att and att.check_out2 else 'grey' }}">
+            <i class="fas fa-sign-out-alt"></i>
+          </div>
+          <div style="flex:1;">
+            <div class="punch-label">Session 2 — Check Out</div>
+            <div class="punch-time">
+              {% if att and att.check_out2 %}{{ att.check_out2.strftime('%I:%M %p') }}
+              {% else %}<span style="color:var(--text-muted);">Not yet</span>{% endif %}
+            </div>
+          </div>
+          <div class="punch-num">4</div>
+        </div>
+      </div>
+
+      <!-- Hours worked today -->
+      {% if today_att and today_att.check_in %}
+      <div style="background:rgba(14,173,105,0.06);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;color:var(--text-muted);">Hours worked today</span>
+        <span style="font-size:18px;font-weight:800;color:var(--success);">{{ today_att.total_hours }}h</span>
+      </div>
+      {% endif %}
+
+      <!-- Action Button -->
+      {% if today_att and today_att.next_action == 'done' %}
+        <div class="btn-erp w-100" style="justify-content:center;background:rgba(14,173,105,0.1);color:var(--success);cursor:default;">
+          <i class="fas fa-check-circle me-2"></i>All 4 punches completed today!
+        </div>
+      {% else %}
+        <button id="punchBtn" onclick="doPunch()" class="btn-erp btn-erp-primary w-100" style="justify-content:center;font-size:15px;padding:13px;">
+          <i class="fas fa-fingerprint me-2"></i>
+          <span id="punchBtnLabel">
+            {% if not today_att %}Mark Check-In (Punch 1)
+            {% elif not today_att.check_out %}Mark Check-Out (Punch 2)
+            {% elif not today_att.check_in2 %}Mark Session 2 Check-In (Punch 3)
+            {% else %}Mark Session 2 Check-Out (Punch 4){% endif %}
+          </span>
+        </button>
+      {% endif %}
+
+      <div style="font-size:11.5px;color:var(--text-muted);text-align:center;margin-top:8px;">
+        <i class="fas fa-shield-alt me-1" style="color:var(--info);"></i>
+        GPS verified · Store radius {{ store_radius }}m
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right Column ── -->
+  <div class="col-lg-7">
+    <div class="row g-3">
+      <!-- Leave Balance -->
+      <div class="col-md-6">
+        <div class="card-erp p-4" style="border-top:4px solid var(--info);">
+          <div class="kpi-icon blue mb-2"><i class="fas fa-calendar-times"></i></div>
+          <div class="kpi-label">Leave Balance</div>
+          {% if emp %}
+          <div class="kpi-value" style="color:var(--info);">{{ emp.leaves_remaining }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">of {{ emp.total_leave_entitlement }} days</div>
+          {% if pending_leaves > 0 %}
+          <div style="font-size:12px;color:var(--warning);margin-top:4px;"><i class="fas fa-clock me-1"></i>{{ pending_leaves }} pending</div>
+          {% endif %}
+          {% else %}<div style="color:var(--text-muted);">No profile</div>{% endif %}
+          <a href="{{ url_for('organiser', tab='leaves') }}" class="btn-erp btn-erp-secondary btn-erp-sm mt-3 w-100" style="justify-content:center;">Apply Leave</a>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="col-md-6">
+        <div class="card-erp p-4" style="border-top:4px solid var(--warning);">
+          <div class="section-title mb-3" style="font-size:14px;">⚡ Quick Actions</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <a href="{{ url_for('billing') }}" class="btn-erp btn-erp-primary btn-erp-sm" style="justify-content:center;"><i class="fas fa-cash-register me-1"></i>New Sale</a>
+            <a href="{{ url_for('organiser', tab='salary') }}" class="btn-erp btn-erp-secondary btn-erp-sm" style="justify-content:center;"><i class="fas fa-money-check-alt me-1"></i>Salary Slips</a>
+            <a href="{{ url_for('organiser', tab='profile') }}" class="btn-erp btn-erp-secondary btn-erp-sm" style="justify-content:center;"><i class="fas fa-user-edit me-1"></i>My Profile</a>
+            <a href="{{ url_for('products') }}" class="btn-erp btn-erp-secondary btn-erp-sm" style="justify-content:center;"><i class="fas fa-boxes me-1"></i>Products</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Leaves -->
+      <div class="col-12">
+        <div class="card-erp p-4">
+          <div class="section-header mb-2">
+            <div class="section-title" style="font-size:14px;">📋 Recent Leave Applications</div>
+            <a href="{{ url_for('organiser', tab='leaves') }}" class="btn-erp btn-erp-secondary btn-erp-sm">Apply / View</a>
+          </div>
+          {% if emp and emp.leave_applications %}
+            {% for la in emp.leave_applications[:4] %}
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div>{{ '✅' if la.status=='approved' else '❌' if la.status=='rejected' else '⏳' }}</div>
+              <div style="flex:1;font-size:13px;font-weight:600;">{{ la.leave_type.title() }} · {{ la.days }} day(s)</div>
+              <div style="font-size:11.5px;color:var(--text-muted);">{{ la.from_date.strftime('%d %b') }}–{{ la.to_date.strftime('%d %b') }}</div>
+              <span class="badge-erp {{ 'badge-success' if la.status=='approved' else 'badge-danger' if la.status=='rejected' else 'badge-warning' }}" style="font-size:10px;">{{ la.status.title() }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div style="color:var(--text-muted);font-size:13px;">No applications yet</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.punch-row {
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-radius:10px;border:1.5px solid var(--border);background:var(--card-bg);
+  transition:all 0.2s;
+}
+.punch-row.done  { border-color:rgba(14,173,105,0.3);background:rgba(14,173,105,0.04); }
+.punch-row.next  { border-color:var(--accent);background:rgba(233,69,96,0.04); }
+.punch-row.pending { opacity:0.6; }
+
+.punch-icon {
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;flex-shrink:0;
+}
+.punch-icon.green  { background:rgba(14,173,105,0.12);color:var(--success); }
+.punch-icon.orange { background:rgba(245,166,35,0.12);color:var(--warning); }
+.punch-icon.grey   { background:var(--bg);color:var(--text-muted); }
+.punch-icon.red    { background:rgba(233,69,96,0.12);color:var(--accent); }
+
+.punch-label { font-size:13px;font-weight:600;color:var(--text); }
+.punch-time  { font-size:12px;color:var(--text-muted);margin-top:2px; }
+.punch-num   { font-size:11px;font-weight:800;color:var(--text-muted);background:var(--bg);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center; }
+
+.geo-ok   { color:var(--success);font-size:11px;margin-left:6px;font-weight:600; }
+.geo-warn { color:var(--warning);font-size:11px;margin-left:6px;font-weight:600; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STORE_LAT    = {{ store_lat }};
+const STORE_LNG    = {{ store_lng }};
+const STORE_RADIUS = {{ store_radius }};
+let userLat = 0, userLng = 0, geoReady = false;
+
+/* ── Haversine ── */
+function calcDist(la1,lo1,la2,lo2){
+  const R=6371000,p1=la1*Math.PI/180,p2=la2*Math.PI/180;
+  const dp=(la2-la1)*Math.PI/180,dl=(lo2-lo1)*Math.PI/180;
+  return 2*R*Math.asin(Math.sqrt(Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2));
+}
+
+/* ── Get GPS on load ── */
+function initGeo(){
+  const dot  = document.getElementById('geoDot');
+  const text = document.getElementById('geoText');
+  if (!navigator.geolocation){
+    dot.style.background='#f5a623';
+    text.textContent='GPS not supported — attendance will be marked without geofence.';
+    geoReady=true; return;
+  }
+  navigator.geolocation.watchPosition(pos=>{
+    userLat=pos.coords.latitude; userLng=pos.coords.longitude; geoReady=true;
+    const dist=calcDist(userLat,userLng,STORE_LAT,STORE_LNG);
+    const within=dist<=STORE_RADIUS;
+    dot.style.background  = within?'#0ead69':'#f5a623';
+    dot.style.animation   = within?'pulse 1.5s infinite':'none';
+    text.innerHTML = within
+      ? `<span style="color:var(--success);font-weight:600;"><i class="fas fa-check-circle me-1"></i>Within store area</span> <span style="color:var(--text-muted);">(${Math.round(dist)}m away)</span>`
+      : `<span style="color:var(--warning);font-weight:600;"><i class="fas fa-exclamation-triangle me-1"></i>${Math.round(dist)}m from store</span> <span style="color:var(--text-muted);">— attendance will be flagged</span>`;
+  }, err=>{
+    dot.style.background='#ccc';
+    text.textContent='Location access denied — attendance will be marked without geofence.';
+    geoReady=true;
+  },{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
+}
+
+/* ── Main punch action ── */
+function doPunch(){
+  const btn   = document.getElementById('punchBtn');
+  const label = document.getElementById('punchBtnLabel');
+  if(!geoReady){ showToast('Waiting for GPS…','info'); return; }
+
+  btn.disabled=true;
+  label.innerHTML='<i class="fas fa-spinner fa-spin me-2"></i>Recording…';
+
+  fetch('/attendance/punch',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({lat:userLat, lng:userLng})
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.success){
+      const geoMsg = d.within_geofence
+        ? '<span style="color:var(--success)">✓ Geofence OK</span>'
+        : '<span style="color:var(--warning)">⚠ Outside store area — flagged</span>';
+      const distMsg = d.distance ? ` · ${Math.round(d.distance)}m away` : '';
+      showToast(`✅ Punch ${d.punch}: ${d.message} ${geoMsg}${distMsg}`,
+                d.within_geofence?'success':'warning');
+      if(d.next==='done'){
+        showToast(`🎉 All 4 punches done! Total: loading…`,'success');
+      }
+      setTimeout(()=>location.reload(), 1800);
+    } else if(d.done){
+      showToast(`All punches completed today! Total: ${d.total_hours}h`,'info');
+      btn.disabled=true;
+      label.innerHTML='<i class="fas fa-check-circle me-2"></i>All done today';
+    } else {
+      showToast(d.error||'Error recording punch','danger');
+      btn.disabled=false;
+      label.innerHTML='<i class="fas fa-fingerprint me-2"></i>Try Again';
+    }
+  })
+  .catch(()=>{
+    showToast('Network error — please try again','danger');
+    btn.disabled=false;
+    label.innerHTML='<i class="fas fa-fingerprint me-2"></i>Try Again';
+  });
+}
+
+// Start geo on load
+initGeo();
+</script>
+{% endblock %}

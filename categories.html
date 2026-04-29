@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Categories{% endblock %}
+{% block page_title %}Product Categories{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">Categories</div>
+    <div class="section-subtitle">{{ categories|length }} categories</div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Add Category Form -->
+  <div class="col-md-4">
+    <div class="card-erp p-4">
+      <div class="section-title mb-3" style="font-size:16px;">Add New Category</div>
+      <form method="POST" action="{{ url_for('add_category') }}" class="form-erp">
+        <div class="mb-3">
+          <label class="form-label">Category Name *</label>
+          <input type="text" name="name" class="form-control" required placeholder="e.g. Summer Collection">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="2" placeholder="Optional..."></textarea>
+        </div>
+        <button type="submit" class="btn-erp btn-erp-primary w-100" style="justify-content:center;">
+          <i class="fas fa-plus"></i> Add Category
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Categories List -->
+  <div class="col-md-8">
+    <div class="card-erp">
+      <table class="table-erp">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Category Name</th>
+            <th>Description</th>
+            <th style="text-align:center;">Products</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in categories %}
+          <tr>
+            <td style="color:var(--text-muted);font-weight:600;">{{ loop.index }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#c0392b);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;flex-shrink:0;">
+                  {{ cat.name[0].upper() }}
+                </div>
+                <span style="font-weight:600;">{{ cat.name }}</span>
+              </div>
+            </td>
+            <td style="color:var(--text-muted);font-size:13px;">{{ cat.description or '—' }}</td>
+            <td style="text-align:center;">
+              <span class="badge-erp badge-info">{{ cat.products|length }}</span>
+            </td>
+            <td>
+              {% if cat.products|length == 0 %}
+              <form method="POST" action="{{ url_for('delete_category', id=cat.id) }}" id="delCat_{{ cat.id }}">
+                <button type="button" class="btn-erp btn-erp-sm" style="background:rgba(233,69,96,0.1);color:var(--accent);"
+                        onclick="confirmDelete('delCat_{{ cat.id }}', 'Delete category {{ cat.name }}?')">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </form>
+              {% else %}
+              <span style="font-size:12px;color:var(--text-muted);">Has products</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted);">No categories yet</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

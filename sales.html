@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Sales History{% endblock %}
+{% block page_title %}Sales History{% endblock %}
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">All Transactions</div>
+    <div class="section-subtitle">Complete sales history</div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    {% if current_user.role == 'admin' %}
+    <a href="{{ url_for('all_returns') }}" class="btn-erp btn-erp-secondary">
+      <i class="fas fa-undo-alt"></i> Returns
+    </a>
+    {% endif %}
+    <a href="{{ url_for('billing') }}" class="btn-erp btn-erp-primary">
+      <i class="fas fa-plus"></i> New Sale
+    </a>
+  </div>
+</div>
+
+<div class="card-erp p-3 mb-4">
+  <form method="GET" class="d-flex gap-3">
+    <div style="flex:1;position:relative;">
+      <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px;"></i>
+      <input type="text" name="search" value="{{ search }}" class="form-control"
+             style="padding-left:36px;border-radius:10px;border:1.5px solid var(--border);"
+             placeholder="Search invoice or customer...">
+    </div>
+    <button type="submit" class="btn-erp btn-erp-primary"><i class="fas fa-search"></i> Search</button>
+    {% if search %}<a href="{{ url_for('sales') }}" class="btn-erp btn-erp-secondary">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="card-erp" style="overflow-x:auto;">
+  <table class="table-erp" style="min-width:900px;">
+    <thead>
+      <tr>
+        <th>Invoice</th><th>Customer</th><th>Items</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Payment</th><th>Staff</th><th>Date</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sale in sales.items %}
+      <tr>
+        <td>
+          <a href="{{ url_for('view_invoice', sale_id=sale.id) }}" target="_blank"
+             style="color:var(--accent);font-weight:700;text-decoration:none;font-family:'Space Grotesk',sans-serif;">
+            {{ sale.invoice_number }}
+          </a>
+          {% if sale.is_returned %}<div><span class="badge-erp badge-danger" style="font-size:10px;">FULLY RETURNED</span></div>{% endif %}
+          {% if sale.returns and not sale.is_returned %}<div><span class="badge-erp badge-warning" style="font-size:10px;">PARTIAL RETURN</span></div>{% endif %}
+        </td>
+        <td>
+          <div style="font-weight:600;font-size:13.5px;">{{ sale.customer_name }}</div>
+          {% if sale.customer_phone %}<div style="font-size:11.5px;color:var(--text-muted);">{{ sale.customer_phone }}</div>{% endif %}
+        </td>
+        <td style="text-align:center;"><span class="badge-erp badge-info">{{ sale.items|length }}</span></td>
+        <td>₹{{ "%.2f"|format(sale.subtotal) }}</td>
+        <td style="color:var(--text-muted);">₹{{ "%.2f"|format(sale.gst_amount) }}</td>
+        <td><strong>₹{{ "%.2f"|format(sale.total_amount) }}</strong></td>
+        <td>
+          <span class="badge-erp {{ 'badge-success' if sale.payment_method=='cash' else 'badge-info' if sale.payment_method=='upi' else 'badge-warning' }}">
+            <i class="fas fa-{{ 'money-bill' if sale.payment_method=='cash' else 'mobile-alt' if sale.payment_method=='upi' else 'credit-card' }} me-1"></i>
+            {{ sale.payment_method.upper() }}
+          </span>
+        </td>
+        <td style="font-size:12.5px;color:var(--text-muted);">{{ sale.staff.full_name if sale.staff else '—' }}</td>
+        <td style="font-size:12.5px;color:var(--text-muted);">
+          {{ sale.created_at.strftime('%d %b %Y') }}<br>
+          <span style="font-size:11px;">{{ sale.created_at.strftime('%I:%M %p') }}</span>
+        </td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <a href="{{ url_for('view_invoice', sale_id=sale.id) }}" target="_blank"
+               class="btn-erp btn-erp-secondary btn-erp-sm" title="View Invoice">
+              <i class="fas fa-eye"></i>
+            </a>
+            <a href="{{ url_for('download_invoice_pdf', sale_id=sale.id) }}"
+               class="btn-erp btn-erp-sm" style="background:rgba(59,130,246,0.1);color:#3b82f6;" title="Download PDF">
+              <i class="fas fa-download"></i>
+            </a>
+            {% if current_user.role == 'admin' and not sale.is_returned %}
+            <a href="{{ url_for('sale_return', sale_id=sale.id) }}"
+               class="btn-erp btn-erp-sm" style="background:rgba(233,69,96,0.1);color:var(--accent);" title="Process Return">
+              <i class="fas fa-undo-alt"></i>
+            </a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="10" style="text-align:center;padding:48px;color:var(--text-muted);">
+          <i class="fas fa-receipt" style="font-size:32px;opacity:0.3;display:block;margin-bottom:12px;"></i>
+          No sales found{% if search %} for "{{ search }}"{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if sales.pages > 1 %}
+  <div class="p-4" style="border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:13px;color:var(--text-muted);">
+      Showing {{ (sales.page-1)*20+1 }}–{{ [sales.page*20, sales.total]|min }} of {{ sales.total }}
+    </div>
+    <div style="display:flex;gap:6px;">
+      {% if sales.has_prev %}
+      <a href="{{ url_for('sales',page=sales.prev_num,search=search) }}" class="btn-erp btn-erp-secondary btn-erp-sm">← Prev</a>
+      {% endif %}
+      {% for p in sales.iter_pages(left_edge=1,right_edge=1,left_current=2,right_current=2) %}
+        {% if p %}
+        <a href="{{ url_for('sales',page=p,search=search) }}"
+           class="btn-erp btn-erp-sm {{ 'btn-erp-primary' if p==sales.page else 'btn-erp-secondary' }}"
+           style="min-width:36px;justify-content:center;">{{ p }}</a>
+        {% else %}
+        <span style="padding:6px 8px;color:var(--text-muted);">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if sales.has_next %}
+      <a href="{{ url_for('sales',page=sales.next_num,search=search) }}" class="btn-erp btn-erp-secondary btn-erp-sm">Next →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

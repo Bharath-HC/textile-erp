@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Sales Returns{% endblock %}
+{% block page_title %}Sales Returns{% endblock %}
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">Returns & Credit Notes</div>
+    <div class="section-subtitle">{{ returns|length }} total returns processed</div>
+  </div>
+  <a href="{{ url_for('sales') }}" class="btn-erp btn-erp-secondary"><i class="fas fa-receipt"></i> Sales History</a>
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="fas fa-undo-alt"></i></div>
+      <div class="kpi-label">Total Returns</div>
+      <div class="kpi-value">{{ returns|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon orange"><i class="fas fa-rupee-sign"></i></div>
+      <div class="kpi-label">Total Refunded</div>
+      <div class="kpi-value">₹{{ "%.0f"|format(returns|sum(attribute='refund_amount')) }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="fas fa-box-open"></i></div>
+      <div class="kpi-label">Items Returned</div>
+      <div class="kpi-value">{{ returns|map(attribute='return_items')|map('list')|map('length')|sum }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card-erp">
+  <table class="table-erp">
+    <thead>
+      <tr><th>Return No.</th><th>Original Invoice</th><th>Customer</th><th>Reason</th><th>Items</th><th>Refund</th><th>Method</th><th>Processed By</th><th>Date</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for ret in returns %}
+      <tr>
+        <td style="font-weight:700;color:var(--accent);font-family:'Space Grotesk',sans-serif;">{{ ret.return_number }}</td>
+        <td>
+          <a href="{{ url_for('view_invoice', sale_id=ret.sale_id) }}" style="color:var(--info);font-weight:600;text-decoration:none;">
+            {{ ret.original_sale.invoice_number }}
+          </a>
+        </td>
+        <td>
+          <div style="font-weight:600;">{{ ret.customer_name }}</div>
+          {% if ret.customer_phone %}<div style="font-size:11.5px;color:var(--text-muted);">{{ ret.customer_phone }}</div>{% endif %}
+        </td>
+        <td style="font-size:13px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ret.return_reason or '—' }}</td>
+        <td>
+          {% for ri in ret.return_items %}
+          <div style="font-size:12px;">{{ ri.product.name if ri.product else 'N/A' }} × {{ ri.quantity }}</div>
+          {% endfor %}
+        </td>
+        <td style="font-weight:800;color:var(--accent);font-size:15px;">₹{{ "%.2f"|format(ret.refund_amount) }}</td>
+        <td>
+          <span class="badge-erp {{ 'badge-success' if ret.refund_method=='cash' else 'badge-info' if ret.refund_method=='upi' else 'badge-warning' }}">
+            {{ ret.refund_method.replace('_',' ').upper() }}
+          </span>
+        </td>
+        <td style="font-size:12.5px;">{{ ret.processor.full_name if ret.processor else '—' }}</td>
+        <td style="font-size:12px;color:var(--text-muted);">{{ ret.created_at.strftime('%d %b %Y') }}<br>{{ ret.created_at.strftime('%I:%M %p') }}</td>
+        <td>
+          <a href="{{ url_for('download_credit_note', ret_id=ret.id) }}" class="btn-erp btn-erp-sm" style="background:rgba(233,69,96,0.1);color:var(--accent);" title="Download Credit Note">
+            <i class="fas fa-download"></i> Credit Note
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" style="text-align:center;padding:48px;color:var(--text-muted);">
+        <i class="fas fa-undo-alt" style="font-size:32px;opacity:0.3;display:block;margin-bottom:12px;"></i>
+        No returns processed yet
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

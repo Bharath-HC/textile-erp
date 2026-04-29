@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Products{% endblock %}
+{% block page_title %}Products & Inventory{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+  <div>
+    <div class="section-title">Product Inventory</div>
+    <div class="section-subtitle">{{ products|length }} products found</div>
+  </div>
+  {% if current_user.role == 'admin' %}
+  <a href="{{ url_for('add_product') }}" class="btn-erp btn-erp-primary">
+    <i class="fas fa-plus"></i> Add Product
+  </a>
+  {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="card-erp p-3 mb-4">
+  <form method="GET" class="d-flex gap-3 flex-wrap align-items-end">
+    <div style="flex:1;min-width:200px;">
+      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-muted)">SEARCH</label>
+      <div style="position:relative;">
+        <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px;"></i>
+        <input type="text" name="search" value="{{ search }}" class="form-control"
+               style="padding-left:36px;border-radius:10px;border:1.5px solid var(--border);"
+               placeholder="Search by name or barcode...">
+      </div>
+    </div>
+    <div style="min-width:160px;">
+      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-muted)">CATEGORY</label>
+      <select name="category" class="form-select" style="border-radius:10px;border:1.5px solid var(--border);">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+        <option value="{{ cat.id }}" {{ 'selected' if category_filter == cat.id|string }}>{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="min-width:140px;">
+      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-muted)">SORT BY</label>
+      <select name="sort" class="form-select" style="border-radius:10px;border:1.5px solid var(--border);">
+        <option value="name" {{ 'selected' if sort == 'name' }}>Name</option>
+        <option value="price" {{ 'selected' if sort == 'price' }}>Price</option>
+        <option value="quantity" {{ 'selected' if sort == 'quantity' }}>Stock</option>
+      </select>
+    </div>
+    <button type="submit" class="btn-erp btn-erp-primary">
+      <i class="fas fa-filter"></i> Filter
+    </button>
+    <a href="{{ url_for('products') }}" class="btn-erp btn-erp-secondary">
+      <i class="fas fa-times"></i> Clear
+    </a>
+  </form>
+</div>
+
+<!-- Products Grid -->
+{% if products %}
+<div class="row g-3">
+  {% for p in products %}
+  <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+    <div class="product-card">
+      <div class="product-img">
+        {% if p.image_path %}
+        <img src="{{ url_for('static', filename=p.image_path) }}" alt="{{ p.name }}">
+        {% else %}
+        <i class="fas fa-tshirt" style="font-size:36px;color:#c8d1dc;"></i>
+        {% endif %}
+      </div>
+      {% if p.is_low_stock %}
+      <div style="background:var(--accent);color:white;text-align:center;font-size:10px;font-weight:700;padding:3px;letter-spacing:0.5px;">
+        ⚠ LOW STOCK
+      </div>
+      {% endif %}
+      <div class="product-body">
+        <div class="product-name">{{ p.name }}</div>
+        <div class="product-cat">{{ p.category_name }}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+          {% if p.size %}<span class="badge-erp badge-secondary" style="font-size:10px;">{{ p.size }}</span>{% endif %}
+          {% if p.color %}<span class="badge-erp badge-secondary" style="font-size:10px;">{{ p.color }}</span>{% endif %}
+        </div>
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="product-price">₹{{ "%.0f"|format(p.price) }}</div>
+          <div class="product-stock {{ 'stock-low' if p.is_low_stock else '' }}">
+            {{ p.quantity }} pcs
+          </div>
+        </div>
+        {% if p.barcode %}
+        <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
+          <i class="fas fa-barcode me-1"></i>{{ p.barcode }}
+        </div>
+        {% endif %}
+        {% if current_user.role == 'admin' %}
+        <div class="d-flex gap-2 mt-3">
+          <a href="{{ url_for('edit_product', id=p.id) }}" class="btn-erp btn-erp-secondary btn-erp-sm" style="flex:1;justify-content:center;">
+            <i class="fas fa-edit"></i>
+          </a>
+          <form method="POST" action="{{ url_for('delete_product', id=p.id) }}" id="delForm_{{ p.id }}" style="flex:1;">
+            <button type="button" class="btn-erp btn-erp-sm w-100" style="background:rgba(233,69,96,0.1);color:var(--accent);justify-content:center;"
+                    onclick="confirmDelete('delForm_{{ p.id }}', 'Delete {{ p.name }}?')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-erp p-5 text-center">
+  <i class="fas fa-box-open" style="font-size:48px;color:#c8d1dc;margin-bottom:16px;"></i>
+  <div style="font-size:18px;font-weight:600;color:var(--text-muted);">No products found</div>
+  <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">Try adjusting your filters or add a new product.</div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}My Attendance{% endblock %}
+{% block page_title %}My Attendance{% endblock %}
+{% block content %}
+<script>window.location = "{{ url_for('organiser', tab='attendance') }}";</script>
+<div style="text-align:center;padding:60px;color:var(--text-muted);">
+  <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
+  <div style="margin-top:12px;">Redirecting to Organiser...</div>
+</div>
+{% endblock %}

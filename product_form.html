@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if product else 'Add' }} Product{% endblock %}
+{% block page_title %}{{ 'Edit' if product else 'Add' }} Product{% endblock %}
+
+{% block content %}
+<div style="max-width:800px;margin:0 auto;">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('products') }}" class="btn-erp btn-erp-secondary btn-erp-sm">
+      <i class="fas fa-arrow-left"></i> Back
+    </a>
+    <div>
+      <div class="section-title">{{ 'Edit Product' if product else 'Add New Product' }}</div>
+      <div class="section-subtitle">{{ product.name if product else 'Fill in the product details below' }}</div>
+    </div>
+  </div>
+
+  <div class="card-erp p-4">
+    <form method="POST" enctype="multipart/form-data" class="form-erp">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Product Name *</label>
+          <input type="text" name="name" class="form-control" required
+                 value="{{ product.name if product else '' }}" placeholder="e.g. Men's Cotton Shirt">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Category *</label>
+          <select name="category_id" class="form-select" required>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {{ 'selected' if product and product.category_id == cat.id }}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Size</label>
+          <input type="text" name="size" class="form-control"
+                 value="{{ product.size if product else '' }}" placeholder="e.g. S,M,L,XL">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Color</label>
+          <input type="text" name="color" class="form-control"
+                 value="{{ product.color if product else '' }}" placeholder="e.g. Blue">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Selling Price (₹) *</label>
+          <input type="number" name="price" class="form-control" step="0.01" required
+                 value="{{ product.price if product else '' }}" placeholder="0.00">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Cost Price (₹)</label>
+          <input type="number" name="cost_price" class="form-control" step="0.01"
+                 value="{{ product.cost_price if product else '' }}" placeholder="0.00">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Stock Quantity *</label>
+          <input type="number" name="quantity" class="form-control" required
+                 value="{{ product.quantity if product else 0 }}" min="0">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Low Stock Alert</label>
+          <input type="number" name="low_stock_threshold" class="form-control"
+                 value="{{ product.low_stock_threshold if product else 10 }}" min="1">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">GST Rate (%)</label>
+          <select name="gst_rate" class="form-select">
+            {% for rate in [0, 5, 12, 18, 28] %}
+            <option value="{{ rate }}" {{ 'selected' if product and product.gst_rate == rate else ('selected' if not product and rate == 5) }}>{{ rate }}%</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Barcode / SKU</label>
+          <input type="text" name="barcode" class="form-control"
+                 value="{{ product.barcode if product else '' }}" placeholder="e.g. ABC001">
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="2"
+                    placeholder="Optional product description...">{{ product.description if product else '' }}</textarea>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Product Image</label>
+          <input type="file" name="image" class="form-control" accept="image/*" onchange="previewImage(event)">
+          {% if product and product.image_path %}
+          <div class="mt-2">
+            <img src="{{ url_for('static', filename=product.image_path) }}" style="height:80px;border-radius:8px;object-fit:cover;" alt="Current image">
+            <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">Current image</span>
+          </div>
+          {% endif %}
+          <div id="imgPreview" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-3 mt-4">
+        <button type="submit" class="btn-erp btn-erp-primary">
+          <i class="fas fa-{{ 'save' if product else 'plus' }}"></i>
+          {{ 'Update Product' if product else 'Add Product' }}
+        </button>
+        <a href="{{ url_for('products') }}" class="btn-erp btn-erp-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewImage(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('imgPreview').innerHTML =
+        `<img src="${e.target.result}" style="height:80px;border-radius:8px;object-fit:cover;" alt="Preview"> <span style="font-size:12px;color:var(--text-muted);">Preview</span>`;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+</script>
+{% endblock %}

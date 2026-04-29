@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TextileERP{% endblock %} — Textile Showroom</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="fas fa-store"></i></div>
+    <div class="brand-text">
+      <span class="brand-name">TextileERP</span>
+      <span class="brand-sub">Showroom Management</span>
+    </div>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-avatar">{{ current_user.full_name[0].upper() if current_user.full_name else 'U' }}</div>
+    <div class="user-info">
+      <div class="user-name">{{ current_user.full_name or current_user.username }}</div>
+      <div class="badge-role {{ 'admin' if current_user.role == 'admin' else 'staff' }}">
+        <i class="fas fa-{{ 'crown' if current_user.role == 'admin' else 'user' }} me-1"></i>
+        {{ current_user.role.title() }}
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    {% if current_user.role == 'admin' %}
+    <!-- ── ADMIN NAV ── -->
+    <div class="nav-section-label">Main</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
+    </a>
+    <a href="{{ url_for('billing') }}" class="nav-item {% if request.endpoint == 'billing' %}active{% endif %}">
+      <i class="fas fa-cash-register"></i><span>Point of Sale</span>
+    </a>
+    <a href="{{ url_for('sales') }}" class="nav-item {% if request.endpoint in ['sales','view_invoice'] %}active{% endif %}">
+      <i class="fas fa-receipt"></i><span>Sales History</span>
+    </a>
+    <a href="{{ url_for('all_returns') }}" class="nav-item {% if 'return' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-undo-alt"></i><span>Returns</span>
+    </a>
+
+    <div class="nav-section-label">Inventory</div>
+    <a href="{{ url_for('products') }}" class="nav-item {% if 'product' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-boxes"></i><span>Products</span>
+    </a>
+    <a href="{{ url_for('categories') }}" class="nav-item {% if 'categor' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-tags"></i><span>Categories</span>
+    </a>
+
+    <div class="nav-section-label">Analytics & HR</div>
+    <a href="{{ url_for('analytics') }}" class="nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
+      <i class="fas fa-chart-line"></i><span>Analytics</span>
+    </a>
+    <a href="{{ url_for('employees') }}" class="nav-item {% if 'employee' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-users"></i><span>Employees</span>
+    </a>
+    <a href="{{ url_for('attendance') }}" class="nav-item {% if 'attendance' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-calendar-check"></i><span>Attendance</span>
+    </a>
+    <a href="{{ url_for('leaves') }}" class="nav-item {% if 'leave' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-calendar-times"></i><span>Leave Requests
+        {%- set pl = namespace(c=0) -%}
+        {# pending badge injected via JS #}
+      </span>
+      <span id="pendingLeaveBadge" class="ms-auto" style="display:none;background:#e94560;color:white;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;"></span>
+    </a>
+
+    {% else %}
+    <!-- ── STAFF NAV ── -->
+    <div class="nav-section-label">Main</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <i class="fas fa-home"></i><span>My Dashboard</span>
+    </a>
+    <a href="{{ url_for('billing') }}" class="nav-item {% if request.endpoint == 'billing' %}active{% endif %}">
+      <i class="fas fa-cash-register"></i><span>Point of Sale</span>
+    </a>
+    <a href="{{ url_for('sales') }}" class="nav-item {% if request.endpoint == 'sales' %}active{% endif %}">
+      <i class="fas fa-receipt"></i><span>Sales History</span>
+    </a>
+    <a href="{{ url_for('products') }}" class="nav-item {% if 'product' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-boxes"></i><span>Products</span>
+    </a>
+
+    <div class="nav-section-label">My Space</div>
+    <a href="{{ url_for('organiser', tab='profile') }}" class="nav-item {% if request.endpoint == 'organiser' and request.args.get('tab','profile') == 'profile' %}active{% endif %}">
+      <i class="fas fa-user-circle"></i><span>My Profile</span>
+    </a>
+    <a href="{{ url_for('organiser', tab='salary') }}" class="nav-item {% if request.endpoint == 'organiser' and request.args.get('tab') == 'salary' %}active{% endif %}">
+      <i class="fas fa-money-check-alt"></i><span>Salary Slips</span>
+    </a>
+    <a href="{{ url_for('leaves') }}" class="nav-item {% if 'leave' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-calendar-times"></i><span>My Leaves</span>
+    </a>
+    <a href="{{ url_for('attendance') }}" class="nav-item {% if 'attendance' in request.endpoint %}active{% endif %}">
+      <i class="fas fa-calendar-check"></i><span>Attendance</span>
+    </a>
+    {% endif %}
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{{ url_for('logout') }}" class="nav-item logout">
+      <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+    </a>
+  </div>
+</div>
+
+<div class="main-content" id="main-content">
+  <div class="topbar">
+    <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+    <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+    <div class="topbar-actions">
+      <div class="quick-search">
+        <i class="fas fa-search"></i>
+        <input type="text" id="quickSearch" placeholder="Quick search products..." autocomplete="off">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <div class="topbar-date"><i class="fas fa-calendar me-1"></i><span id="currentDate"></span></div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="toast-msg toast-{{ cat }}" id="toast_{{ loop.index }}">
+      <i class="fas fa-{{ 'check-circle' if cat == 'success' else 'exclamation-circle' if cat == 'danger' else 'info-circle' }} me-2"></i>
+      {{ msg }}
+      <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+  </div>
+
+  <div class="page-content">{% block content %}{% endblock %}</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

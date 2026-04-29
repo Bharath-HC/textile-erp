@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Leave Requests{% endblock %}
+{% block page_title %}Leave Management{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="kpi-card warning">
+      <div class="kpi-icon orange"><i class="fas fa-clock"></i></div>
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-value" style="color:var(--warning);">{{ pending|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon green"><i class="fas fa-check"></i></div>
+      <div class="kpi-label">Approved</div>
+      <div class="kpi-value" style="color:var(--success);">{{ all_leaves|selectattr('status','equalto','approved')|list|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="fas fa-times"></i></div>
+      <div class="kpi-label">Rejected</div>
+      <div class="kpi-value" style="color:var(--accent);">{{ all_leaves|selectattr('status','equalto','rejected')|list|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="fas fa-list"></i></div>
+      <div class="kpi-label">Total Applications</div>
+      <div class="kpi-value">{{ all_leaves|length }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Pending Approvals -->
+{% if pending %}
+<div class="card-erp mb-4" style="border-top:4px solid var(--warning);">
+  <div class="p-4" style="border-bottom:1px solid var(--border);">
+    <div class="section-title"><i class="fas fa-bell me-2" style="color:var(--warning);"></i>Pending Approvals ({{ pending|length }})</div>
+  </div>
+  <div class="p-4">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      {% for la in pending %}
+      <div style="border:1.5px solid var(--border);border-radius:14px;padding:16px;background:rgba(245,166,35,0.03);">
+        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#c0392b);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0;">
+            {{ la.employee.full_name[0].upper() }}
+          </div>
+          <div style="flex:1;min-width:200px;">
+            <div style="font-weight:700;font-size:15px;">{{ la.employee.full_name }}</div>
+            <div style="font-size:12.5px;color:var(--text-muted);">{{ la.employee.role }} · {{ la.employee.department or '—' }}</div>
+            <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+              <span class="badge-erp badge-info">{{ la.leave_type.title() }} Leave</span>
+              <span style="font-size:13px;"><i class="fas fa-calendar me-1" style="color:var(--text-muted);"></i>{{ la.from_date.strftime('%d %b') }} – {{ la.to_date.strftime('%d %b %Y') }}</span>
+              <span style="font-size:13px;font-weight:700;"><i class="fas fa-moon me-1" style="color:var(--info);"></i>{{ la.days }} day(s)</span>
+            </div>
+            {% if la.reason %}<div style="font-size:13px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-comment me-1"></i>{{ la.reason }}</div>{% endif %}
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Applied {{ la.applied_on.strftime('%d %b %Y, %I:%M %p') }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:160px;">
+            <form method="POST" action="{{ url_for('review_leave', lid=la.id, action='approved') }}" id="approve_{{ la.id }}">
+              <input type="hidden" name="note" value="">
+              <button type="submit" class="btn-erp btn-erp-success w-100" style="justify-content:center;">
+                <i class="fas fa-check"></i> Approve
+              </button>
+            </form>
+            <button onclick="rejectLeave({{ la.id }})" class="btn-erp w-100" style="justify-content:center;background:rgba(233,69,96,0.1);color:var(--accent);">
+              <i class="fas fa-times"></i> Reject
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- All Leave History -->
+<div class="card-erp">
+  <div class="p-4" style="border-bottom:1px solid var(--border);"><div class="section-title">All Leave History</div></div>
+  <table class="table-erp">
+    <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Applied</th><th>Status</th><th>Reviewer</th></tr></thead>
+    <tbody>
+      {% for la in all_leaves %}
+      <tr>
+        <td>
+          <div style="font-weight:600;">{{ la.employee.full_name }}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);">{{ la.employee.employee_id }}</div>
+        </td>
+        <td><span class="badge-erp badge-info" style="font-size:11px;">{{ la.leave_type.title() }}</span></td>
+        <td>{{ la.from_date.strftime('%d %b %Y') }}</td>
+        <td>{{ la.to_date.strftime('%d %b %Y') }}</td>
+        <td style="font-weight:700;">{{ la.days }}</td>
+        <td style="font-size:13px;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ la.reason or '—' }}</td>
+        <td style="font-size:12px;color:var(--text-muted);">{{ la.applied_on.strftime('%d %b %Y') }}</td>
+        <td>
+          <span class="badge-erp {{ 'badge-success' if la.status=='approved' else 'badge-danger' if la.status=='rejected' else 'badge-warning' }}">
+            {{ la.status.title() }}
+          </span>
+          {% if la.review_note %}<div style="font-size:10.5px;color:var(--text-muted);">{{ la.review_note }}</div>{% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--text-muted);">
+          {% if la.reviewer %}{{ la.reviewer.full_name }}<br><span style="font-size:11px;">{{ la.reviewed_on.strftime('%d %b') if la.reviewed_on else '' }}</span>{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-muted);">No leave applications</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:420px;max-width:95vw;">
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:14px;">Reject Leave Application</div>
+    <form id="rejectForm" method="POST">
+      <div class="form-erp mb-3">
+        <label class="form-label">Reason for Rejection (optional)</label>
+        <textarea name="note" class="form-control" rows="2" placeholder="e.g. Understaffed period..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-erp w-100" style="justify-content:center;background:rgba(233,69,96,0.1);color:var(--accent);">❌ Reject</button>
+        <button type="button" onclick="document.getElementById('rejectModal').style.display='none'" class="btn-erp btn-erp-secondary w-100" style="justify-content:center;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function rejectLeave(id) {
+  document.getElementById('rejectForm').action = `/leaves/review/${id}/rejected`;
+  document.getElementById('rejectModal').style.display = 'flex';
+}
+document.getElementById('rejectModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+</script>
+{% endblock %}
