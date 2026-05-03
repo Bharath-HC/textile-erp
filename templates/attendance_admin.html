@@ -32,49 +32,84 @@
 </div>
 
 <!-- Summary Cards -->
-{% set present_count = namespace(val=0) %}
-{% set absent_count = namespace(val=0) %}
-{% set half_count = namespace(val=0) %}
+{% set present_count  = namespace(val=0) %}
+{% set absent_count   = namespace(val=0) %}
+{% set half_count     = namespace(val=0) %}
+{% set geo_flag_count = namespace(val=0) %}
+{% set geo_flagged    = namespace(list=[]) %}
 {% for emp in employees %}
   {% if records.get(emp.id) %}
-    {% if records[emp.id].status == 'present' %}{% set present_count.val = present_count.val + 1 %}
-    {% elif records[emp.id].status == 'absent' %}{% set absent_count.val = absent_count.val + 1 %}
-    {% elif records[emp.id].status == 'half-day' %}{% set half_count.val = half_count.val + 1 %}
+    {% set r = records[emp.id] %}
+    {% if r.status == 'present' %}{% set present_count.val = present_count.val + 1 %}
+    {% elif r.status == 'absent' %}{% set absent_count.val = absent_count.val + 1 %}
+    {% elif r.status == 'half-day' %}{% set half_count.val = half_count.val + 1 %}
+    {% endif %}
+    {% if r.self_marked and r.within_geofence == false %}
+      {% set geo_flag_count.val = geo_flag_count.val + 1 %}
+      {% set geo_flagged.list = geo_flagged.list + [(emp, r)] %}
     {% endif %}
   {% endif %}
 {% endfor %}
 
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="kpi-card">
-      <div class="kpi-icon green"><i class="fas fa-check"></i></div>
-      <div class="kpi-label">Present</div>
-      <div class="kpi-value" style="color:var(--success);">{{ present_count.val }}</div>
+<!-- Geofence Flag Alert Banner -->
+{% if geo_flag_count.val > 0 %}
+<div class="card-erp mb-4" style="border:2px solid var(--warning);background:rgba(245,166,35,0.04);">
+  <div class="p-4">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div style="width:44px;height:44px;border-radius:12px;background:rgba(245,166,35,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">&#128205;</div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:800;color:#92400e;">
+          &#9888; Geofence Violation — {{ geo_flag_count.val }} employee(s) marked outside store area
+        </div>
+        <div style="font-size:13px;color:#b45309;margin-top:2px;">
+          {{ selected_date.strftime('%d %B %Y') }} · Check-ins recorded outside the {{ store_radius }}m geofence
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="col-md-3">
-    <div class="kpi-card">
-      <div class="kpi-icon red"><i class="fas fa-times"></i></div>
-      <div class="kpi-label">Absent</div>
-      <div class="kpi-value" style="color:var(--danger);">{{ absent_count.val }}</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="kpi-card">
-      <div class="kpi-icon orange"><i class="fas fa-adjust"></i></div>
-      <div class="kpi-label">Half Day</div>
-      <div class="kpi-value" style="color:var(--warning);">{{ half_count.val }}</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="kpi-card">
-      <div class="kpi-icon blue"><i class="fas fa-user-check"></i></div>
-      <div class="kpi-label">Not Marked</div>
-      <div class="kpi-value" style="color:var(--info);">{{ employees|length - present_count.val - absent_count.val - half_count.val }}</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      {% for emp, r in geo_flagged.list %}
+      <div style="background:white;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px;border:1px solid rgba(245,166,35,0.3);">
+        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#c0392b);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">{{ emp.full_name[0].upper() }}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:14px;">{{ emp.full_name }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">{{ emp.role }} &middot; {{ emp.department or '&mdash;' }} &middot; ID: {{ emp.employee_id }}</div>
+          {% if r.check_in %}<div style="font-size:12px;margin-top:2px;"><i class="fas fa-sign-in-alt me-1" style="color:var(--success);"></i>{{ r.check_in.strftime('%I:%M %p') }}{% if r.check_out %} &rarr; <i class="fas fa-sign-out-alt me-1" style="color:var(--warning);"></i>{{ r.check_out.strftime('%I:%M %p') }}{% endif %}</div>{% endif %}
+          {% if r.latitude %}<div style="font-size:11px;color:var(--text-muted);">GPS: {{ "%.4f"|format(r.latitude) }}, {{ "%.4f"|format(r.longitude) }}</div>{% endif %}
+        </div>
+        <span style="padding:5px 12px;border-radius:20px;background:rgba(245,166,35,0.15);color:#92400e;font-size:12px;font-weight:700;white-space:nowrap;">
+          <i class="fas fa-map-marker-alt me-1"></i>Outside {{ store_radius }}m
+        </span>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
+{% endif %}
 
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-check"></i></div>
+      <div class="kpi-label">Present</div><div class="kpi-value" style="color:var(--success);">{{ present_count.val }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="kpi-card"><div class="kpi-icon red"><i class="fas fa-times"></i></div>
+      <div class="kpi-label">Absent</div><div class="kpi-value" style="color:var(--danger);">{{ absent_count.val }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="kpi-card"><div class="kpi-icon orange"><i class="fas fa-adjust"></i></div>
+      <div class="kpi-label">Half Day</div><div class="kpi-value" style="color:var(--warning);">{{ half_count.val }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="kpi-card" style="{{ 'border-top:3px solid var(--warning);' if geo_flag_count.val > 0 else '' }}">
+      <div class="kpi-icon {{ 'orange' if geo_flag_count.val > 0 else 'blue' }}">
+        <i class="fas fa-{{ 'exclamation-triangle' if geo_flag_count.val > 0 else 'map-marker-check' }}"></i>
+      </div>
+      <div class="kpi-label">Geo Flagged</div>
+      <div class="kpi-value" style="color:{{ 'var(--warning)' if geo_flag_count.val > 0 else 'var(--success)' }};">{{ geo_flag_count.val }}</div>
+      <div class="kpi-sub">{{ 'outside geofence' if geo_flag_count.val > 0 else 'All in-store' }}</div>
+    </div>
+  </div>
+</div>
 <!-- Attendance Form -->
 <div class="card-erp">
   <div class="p-4" style="border-bottom:1px solid var(--border);">
