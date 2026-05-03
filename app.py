@@ -638,7 +638,7 @@ def attendance():
     if current_user.role=='admin':
         emps=Employee.query.filter_by(is_active=True).all()
         recs={a.employee_id:a for a in Attendance.query.filter_by(date=sel).all()}
-        return render_template('attendance_admin.html',employees=emps,records=recs,selected_date=sel,today=today)
+        return render_template('attendance_admin.html',employees=emps,records=recs,selected_date=sel,today=today,store_radius=STORE_RADIUS_M)
     else:
         emp=Employee.query.filter_by(user_id=current_user.id).first()
         if not emp: flash('No employee linked.','warning'); return redirect(url_for('dashboard'))
